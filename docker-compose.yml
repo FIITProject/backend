@@ -1,0 +1,31 @@
+# Локальная разработка: postgres + api. Запуск: docker compose up -d --build
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: fiit
+      POSTGRES_USER: fiit
+      POSTGRES_PASSWORD: fiit
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fiit -d fiit"]
+      interval: 2s
+      retries: 30
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Db: Host=db;Database=fiit;Username=fiit;Password=fiit
+      Jwt__Key: ${JWT_KEY:-dev-only-key-change-me-dev-only-key-change-me}
+      Cors__Origins__0: http://localhost:5173
+    ports:
+      - "8080:8080"
+
+volumes:
+  db-data:
