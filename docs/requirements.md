@@ -66,7 +66,7 @@ HomeworkRecipient(homework_id, student_id, notified_at)        -- снапшот
 Subtask(id, homework_id, order, title, max_score?)
 
 Submission(id, homework_id, student_id, version, file_key, file_name, file_size, submitted_at)   -- опоздание вычисляется
-Review(id, submission_id unique, teacher_id, annotations jsonb, comment, total_override?, updated_at, draft_hash,
+Review(id, submission_id unique, updated_by_id, sent_by_id?, annotations jsonb, comment, total_override?, updated_at, draft_hash,
        sent_at?, sent_hash, sent_total, sent_comment, sent_subtasks jsonb, sent_file_key)       -- снапшот отправленного
 SubtaskScore(review_id, subtask_id, score)
 Notification(id, student_id, kind, text, homework_id?, file_key?, file_name?, status, attempts, available_at, locked_until?, sent_at?, last_error)
