@@ -1,5 +1,7 @@
 # Требования (черновик, 2026-10-05)
 
+> Исходные заметки. Актуальное ТЗ — [tz.md](tz.md): регистрация студентов перенесена из веб-формы в бота, бот — на C#. Модель данных ниже приведена к текущему коду.
+
 Сайт — только для преподавателей (+ публичная форма для студентов). Telegram-бот — только для студентов (получение ДЗ и сдача).
 Стек: C# backend (.NET 10), React frontend, Python бот (ходит в API бэкенда, не в БД; с Telegram взаимодействует только бот). Хостинг — Yandex Cloud: одна VM с docker compose (backend + bot + nginx) + Managed PostgreSQL, S3 = Yandex Object Storage, HTTPS + домен (позже).
 
@@ -41,30 +43,32 @@
 - Проверка привязана к версии сдачи. Новая версия после проверки → статус «на проверке», старые пометки остаются у старой версии.
 - Препод может менять комментарии/пометки в любой момент; результат (оценка, комментарий, PDF с наложенным слоем препода) уходит студенту по кнопке «Отправить студенту».
 
-## Модель данных (черновик)
+## Модель данных
 ```
-Teacher(id, login, password_hash, full_name, sessions_valid_from)   -- токены, выпущенные раньше, недействительны
-Subject(id, name)                                   -- предмет
-Group(id, name)                                     -- ФТ-201, name нормализован, уникален
-Subgroup(id, group_id, number?)                     -- ФТ-201-1; number null = группа без деления
-Course(id, subject_id, subgroup_id, semester_year, semester_term: autumn|spring, admin_teacher_id, archived_at?)
-                                                    -- курс; admin = ведущий преподаватель, unique(subject, subgroup, semester_year, semester_term)
-CourseAccess(course_id, teacher_id)                 -- выданный админом полный доступ
+Teacher(id, login, password_hash, full_name, must_change_password, added_by_id?, created_at, disabled_at?, sessions_valid_from)
+Subject(id, name, normalized_name unique)              -- общий справочник предметов
+Group(id, name unique)                                 -- ФТ-201, name нормализован
+Subgroup(id, group_id, number?)                        -- ФТ-201-1; number null = группа без деления
+Course(id, subject_id, subgroup_id, semester_year, semester_term: Autumn|Spring, admin_teacher_id, created_at, archived_at?)
+                                                       -- unique(subject, subgroup, semester); admin = ведущий преподаватель
+CourseAccess(course_id, teacher_id)                    -- выданный ведущим полный доступ
 
-Student(id, first_name, last_name, telegram_user_id? unique)
-Enrollment(id, student_id, course_id, status: pending|approved, created_at)
-InviteForm(id, teacher_id, subject_id, token, expires_at)  + InviteFormCourse(form_id, course_id)
-Application(id, form_id, course_id, first_name, last_name, tg_hint, pd_consent_at, bind_code, bound_at?)
+Student(id, telegram_user_id unique, telegram_username, first_name, last_name, pd_consent_at, created_at, bot_blocked_at?)
+Enrollment(id, student_id, course_id, invite_id?, status: Pending|Approved|Rejected|Removed, reject_reason, created_at, decided_at, decided_by_id)
+                                                       -- активная (Pending/Approved) — одна на студента и курс
+Invite(id, code unique, author_id, subject_id, expires_at?, closed_at?, created_at) + invite_courses(invite_id, course_id)
 Tag(id, teacher_id, name) + StudentTag(tag_id, student_id)
 
-Homework(id, subject_id, semester_year, semester_term, author_id, title, link, deadline, published_at?)
-HomeworkCourse(homework_id, course_id)                           -- курсы ДЗ; препод видит ДЗ, если имеет доступ хотя бы к одному из них
-HomeworkTarget(homework_id, kind: student|tag|course, ref_id)     -- сужение адресатов внутри курсов ДЗ; нет правил = все студенты курсов
-HomeworkNotification(homework_id, student_id, sent_at)            -- снапшот адресатов на момент публикации
-Subtask(id, homework_id, title, max_score?)                       -- опционально
+Homework(id, subject_id, semester_year, semester_term, author_id, title, link, deadline, created_at, published_at?)
+homework_courses(homework_id, course_id)               -- курсы ДЗ; препод видит ДЗ, если имеет доступ хотя бы к одному
+HomeworkTarget(homework_id, kind: Student|Tag|Course, ref_id)  -- сужение адресатов внутри курсов; нет правил = все
+HomeworkRecipient(homework_id, student_id, notified_at)        -- снапшот тех, кому ушло уведомление
+Subtask(id, homework_id, order, title, max_score?)
 
-Submission(id, homework_id, student_id, version, s3_key, size, submitted_at)   -- опоздание = submitted_at > текущий дедлайн, не хранится
-Review(id, submission_id, teacher_id, annotations_json, comment, total_score?, updated_at, sent_at?, sent_pdf_s3_key?)
+Submission(id, homework_id, student_id, version, file_key, file_name, file_size, submitted_at)   -- опоздание вычисляется
+Review(id, submission_id unique, teacher_id, annotations jsonb, comment, total_override?, updated_at, draft_hash,
+       sent_at?, sent_hash, sent_total, sent_comment, sent_subtasks jsonb, sent_file_key)       -- снапшот отправленного
 SubtaskScore(review_id, subtask_id, score)
+Notification(id, student_id, kind, text, homework_id?, file_key?, file_name?, status, attempts, available_at, locked_until?, sent_at?, last_error)
 ```
 Статус ячейки сводной таблицы = последняя версия Submission + её Review: не сдано / на проверке / проверено (+ отправлено ли студенту), флаг опоздания.

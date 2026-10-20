@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Fiit.Api/Fiit.Api.csproj" />
+    <Project Path="src/Fiit.Contracts/Fiit.Contracts.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Fiit.Api.Tests/Fiit.Api.Tests.csproj" />

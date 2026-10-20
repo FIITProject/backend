@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Fiit.Api.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261012182850_Initial")]
+    [Migration("20261020000958_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -24,66 +24,6 @@ namespace Fiit.Api.Data.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("Fiit.Api.Domain.Application", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("BindCode")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("bind_code");
-
-                    b.Property<DateTimeOffset?>("BoundAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("bound_at");
-
-                    b.Property<int>("EnrollmentId")
-                        .HasColumnType("integer")
-                        .HasColumnName("enrollment_id");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("first_name");
-
-                    b.Property<int>("FormId")
-                        .HasColumnType("integer")
-                        .HasColumnName("form_id");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("last_name");
-
-                    b.Property<DateTimeOffset>("PdConsentAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("pd_consent_at");
-
-                    b.Property<string>("TelegramHint")
-                        .HasColumnType("text")
-                        .HasColumnName("telegram_hint");
-
-                    b.HasKey("Id")
-                        .HasName("pk_applications");
-
-                    b.HasIndex("BindCode")
-                        .IsUnique()
-                        .HasDatabaseName("ix_applications_bind_code");
-
-                    b.HasIndex("EnrollmentId")
-                        .HasDatabaseName("ix_applications_enrollment_id");
-
-                    b.HasIndex("FormId")
-                        .HasDatabaseName("ix_applications_form_id");
-
-                    b.ToTable("applications", (string)null);
-                });
 
             modelBuilder.Entity("Fiit.Api.Domain.Course", b =>
                 {
@@ -102,10 +42,14 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("archived_at");
 
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
                     b.Property<string>("SemesterTerm")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("semester_term");
 
                     b.Property<int>("SemesterYear")
@@ -172,10 +116,27 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<int?>("DecidedById")
+                        .HasColumnType("integer")
+                        .HasColumnName("decided_by_id");
+
+                    b.Property<int?>("InviteId")
+                        .HasColumnType("integer")
+                        .HasColumnName("invite_id");
+
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reject_reason");
+
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("status");
 
                     b.Property<int>("StudentId")
@@ -188,9 +149,16 @@ namespace Fiit.Api.Data.Migrations
                     b.HasIndex("CourseId")
                         .HasDatabaseName("ix_enrollments_course_id");
 
+                    b.HasIndex("DecidedById")
+                        .HasDatabaseName("ix_enrollments_decided_by_id");
+
+                    b.HasIndex("InviteId")
+                        .HasDatabaseName("ix_enrollments_invite_id");
+
                     b.HasIndex("StudentId", "CourseId")
                         .IsUnique()
-                        .HasDatabaseName("ix_enrollments_student_id_course_id");
+                        .HasDatabaseName("ix_enrollments_student_id_course_id")
+                        .HasFilter("status IN ('Pending', 'Approved')");
 
                     b.ToTable("enrollments", (string)null);
                 });
@@ -233,13 +201,18 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("author_id");
 
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
                     b.Property<DateTimeOffset>("Deadline")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deadline");
 
                     b.Property<string>("Link")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
                         .HasColumnName("link");
 
                     b.Property<DateTimeOffset?>("PublishedAt")
@@ -248,8 +221,8 @@ namespace Fiit.Api.Data.Migrations
 
                     b.Property<string>("SemesterTerm")
                         .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("semester_term");
 
                     b.Property<int>("SemesterYear")
@@ -272,10 +245,33 @@ namespace Fiit.Api.Data.Migrations
                     b.HasIndex("AuthorId")
                         .HasDatabaseName("ix_homeworks_author_id");
 
-                    b.HasIndex("SubjectId")
-                        .HasDatabaseName("ix_homeworks_subject_id");
+                    b.HasIndex("SubjectId", "SemesterYear", "SemesterTerm")
+                        .HasDatabaseName("ix_homeworks_subject_id_semester_year_semester_term");
 
                     b.ToTable("homeworks", (string)null);
+                });
+
+            modelBuilder.Entity("Fiit.Api.Domain.HomeworkRecipient", b =>
+                {
+                    b.Property<int>("HomeworkId")
+                        .HasColumnType("integer")
+                        .HasColumnName("homework_id");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("integer")
+                        .HasColumnName("student_id");
+
+                    b.Property<DateTimeOffset>("NotifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("notified_at");
+
+                    b.HasKey("HomeworkId", "StudentId")
+                        .HasName("pk_homework_recipients");
+
+                    b.HasIndex("StudentId")
+                        .HasDatabaseName("ix_homework_recipients_student_id");
+
+                    b.ToTable("homework_recipients", (string)null);
                 });
 
             modelBuilder.Entity("Fiit.Api.Domain.HomeworkTarget", b =>
@@ -293,8 +289,8 @@ namespace Fiit.Api.Data.Migrations
 
                     b.Property<string>("Kind")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("kind");
 
                     b.Property<int>("RefId")
@@ -310,7 +306,7 @@ namespace Fiit.Api.Data.Migrations
                     b.ToTable("homework_targets", (string)null);
                 });
 
-            modelBuilder.Entity("Fiit.Api.Domain.InviteForm", b =>
+            modelBuilder.Entity("Fiit.Api.Domain.Invite", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -319,7 +315,25 @@ namespace Fiit.Api.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTimeOffset>("ExpiresAt")
+                    b.Property<int>("AuthorId")
+                        .HasColumnType("integer")
+                        .HasColumnName("author_id");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
@@ -327,29 +341,20 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("subject_id");
 
-                    b.Property<int>("TeacherId")
-                        .HasColumnType("integer")
-                        .HasColumnName("teacher_id");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("token");
-
                     b.HasKey("Id")
-                        .HasName("pk_invite_forms");
+                        .HasName("pk_invites");
+
+                    b.HasIndex("AuthorId")
+                        .HasDatabaseName("ix_invites_author_id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_invites_code");
 
                     b.HasIndex("SubjectId")
-                        .HasDatabaseName("ix_invite_forms_subject_id");
+                        .HasDatabaseName("ix_invites_subject_id");
 
-                    b.HasIndex("TeacherId")
-                        .HasDatabaseName("ix_invite_forms_teacher_id");
-
-                    b.HasIndex("Token")
-                        .IsUnique()
-                        .HasDatabaseName("ix_invite_forms_token");
-
-                    b.ToTable("invite_forms", (string)null);
+                    b.ToTable("invites", (string)null);
                 });
 
             modelBuilder.Entity("Fiit.Api.Domain.Notification", b =>
@@ -373,6 +378,18 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("FileKey")
+                        .HasColumnType("text")
+                        .HasColumnName("file_key");
+
+                    b.Property<string>("FileName")
+                        .HasColumnType("text")
+                        .HasColumnName("file_name");
+
+                    b.Property<int?>("HomeworkId")
+                        .HasColumnType("integer")
+                        .HasColumnName("homework_id");
+
                     b.Property<string>("Kind")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -387,19 +404,24 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("locked_until");
 
-                    b.Property<int>("RefId")
-                        .HasColumnType("integer")
-                        .HasColumnName("ref_id");
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("status");
 
                     b.Property<int>("StudentId")
                         .HasColumnType("integer")
                         .HasColumnName("student_id");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("text");
 
                     b.HasKey("Id")
                         .HasName("pk_notifications");
@@ -431,13 +453,35 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("comment");
 
+                    b.Property<string>("DraftHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("draft_hash");
+
                     b.Property<DateTimeOffset?>("SentAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("sent_at");
 
+                    b.Property<string>("SentComment")
+                        .HasColumnType("text")
+                        .HasColumnName("sent_comment");
+
                     b.Property<string>("SentFileKey")
                         .HasColumnType("text")
                         .HasColumnName("sent_file_key");
+
+                    b.Property<string>("SentHash")
+                        .HasColumnType("text")
+                        .HasColumnName("sent_hash");
+
+                    b.Property<string>("SentSubtasks")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("sent_subtasks");
+
+                    b.Property<decimal?>("SentTotal")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("numeric(8,2)")
+                        .HasColumnName("sent_total");
 
                     b.Property<int>("SubmissionId")
                         .HasColumnType("integer")
@@ -478,6 +522,14 @@ namespace Fiit.Api.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTimeOffset?>("BotBlockedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("bot_blocked_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -490,12 +542,17 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("last_name");
 
-                    b.Property<long?>("TelegramUserId")
+                    b.Property<DateTimeOffset>("PdConsentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("pd_consent_at");
+
+                    b.Property<long>("TelegramUserId")
                         .HasColumnType("bigint")
                         .HasColumnName("telegram_user_id");
 
                     b.Property<string>("TelegramUsername")
-                        .HasColumnType("text")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("telegram_username");
 
                     b.HasKey("Id")
@@ -571,8 +628,18 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("normalized_name");
+
                     b.HasKey("Id")
                         .HasName("pk_subjects");
+
+                    b.HasIndex("NormalizedName")
+                        .IsUnique()
+                        .HasDatabaseName("ix_subjects_normalized_name");
 
                     b.ToTable("subjects", (string)null);
                 });
@@ -590,6 +657,12 @@ namespace Fiit.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("file_key");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("file_name");
 
                     b.Property<long>("FileSize")
                         .HasColumnType("bigint")
@@ -648,7 +721,8 @@ namespace Fiit.Api.Data.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
                         .HasColumnName("title");
 
                     b.HasKey("Id")
@@ -695,7 +769,8 @@ namespace Fiit.Api.Data.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<int>("TeacherId")
@@ -721,6 +796,18 @@ namespace Fiit.Api.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("AddedById")
+                        .HasColumnType("integer")
+                        .HasColumnName("added_by_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DisabledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("disabled_at");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -733,13 +820,24 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("login");
 
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("boolean")
+                        .HasColumnName("must_change_password");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
+                    b.Property<DateTimeOffset>("SessionsValidFrom")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sessions_valid_from");
+
                     b.HasKey("Id")
                         .HasName("pk_teachers");
+
+                    b.HasIndex("AddedById")
+                        .HasDatabaseName("ix_teachers_added_by_id");
 
                     b.HasIndex("Login")
                         .IsUnique()
@@ -767,42 +865,23 @@ namespace Fiit.Api.Data.Migrations
                     b.ToTable("homework_courses", (string)null);
                 });
 
-            modelBuilder.Entity("invite_form_courses", b =>
+            modelBuilder.Entity("invite_courses", b =>
                 {
                     b.Property<int>("CoursesId")
                         .HasColumnType("integer")
                         .HasColumnName("courses_id");
 
-                    b.Property<int>("InviteFormId")
+                    b.Property<int>("InviteId")
                         .HasColumnType("integer")
-                        .HasColumnName("invite_form_id");
+                        .HasColumnName("invite_id");
 
-                    b.HasKey("CoursesId", "InviteFormId")
-                        .HasName("pk_invite_form_courses");
+                    b.HasKey("CoursesId", "InviteId")
+                        .HasName("pk_invite_courses");
 
-                    b.HasIndex("InviteFormId")
-                        .HasDatabaseName("ix_invite_form_courses_invite_form_id");
+                    b.HasIndex("InviteId")
+                        .HasDatabaseName("ix_invite_courses_invite_id");
 
-                    b.ToTable("invite_form_courses", (string)null);
-                });
-
-            modelBuilder.Entity("Fiit.Api.Domain.Application", b =>
-                {
-                    b.HasOne("Fiit.Api.Domain.Enrollment", "Enrollment")
-                        .WithMany()
-                        .HasForeignKey("EnrollmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_applications_enrollments_enrollment_id");
-
-                    b.HasOne("Fiit.Api.Domain.InviteForm", null)
-                        .WithMany()
-                        .HasForeignKey("FormId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_applications_invite_forms_form_id");
-
-                    b.Navigation("Enrollment");
+                    b.ToTable("invite_courses", (string)null);
                 });
 
             modelBuilder.Entity("Fiit.Api.Domain.Course", b =>
@@ -824,7 +903,7 @@ namespace Fiit.Api.Data.Migrations
                     b.HasOne("Fiit.Api.Domain.Subject", "Subject")
                         .WithMany()
                         .HasForeignKey("SubjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_courses_subjects_subject_id");
 
@@ -859,9 +938,21 @@ namespace Fiit.Api.Data.Migrations
                     b.HasOne("Fiit.Api.Domain.Course", "Course")
                         .WithMany()
                         .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_enrollments_courses_course_id");
+
+                    b.HasOne("Fiit.Api.Domain.Teacher", null)
+                        .WithMany()
+                        .HasForeignKey("DecidedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_enrollments_teachers_decided_by_id");
+
+                    b.HasOne("Fiit.Api.Domain.Invite", null)
+                        .WithMany()
+                        .HasForeignKey("InviteId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_enrollments_invites_invite_id");
 
                     b.HasOne("Fiit.Api.Domain.Student", "Student")
                         .WithMany()
@@ -877,19 +968,40 @@ namespace Fiit.Api.Data.Migrations
 
             modelBuilder.Entity("Fiit.Api.Domain.Homework", b =>
                 {
-                    b.HasOne("Fiit.Api.Domain.Teacher", null)
+                    b.HasOne("Fiit.Api.Domain.Teacher", "Author")
                         .WithMany()
                         .HasForeignKey("AuthorId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_homeworks_teachers_author_id");
 
-                    b.HasOne("Fiit.Api.Domain.Subject", null)
+                    b.HasOne("Fiit.Api.Domain.Subject", "Subject")
                         .WithMany()
                         .HasForeignKey("SubjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_homeworks_subjects_subject_id");
+
+                    b.Navigation("Author");
+
+                    b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("Fiit.Api.Domain.HomeworkRecipient", b =>
+                {
+                    b.HasOne("Fiit.Api.Domain.Homework", null)
+                        .WithMany()
+                        .HasForeignKey("HomeworkId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_homework_recipients_homeworks_homework_id");
+
+                    b.HasOne("Fiit.Api.Domain.Student", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_homework_recipients_students_student_id");
                 });
 
             modelBuilder.Entity("Fiit.Api.Domain.HomeworkTarget", b =>
@@ -902,21 +1014,25 @@ namespace Fiit.Api.Data.Migrations
                         .HasConstraintName("fk_homework_targets_homeworks_homework_id");
                 });
 
-            modelBuilder.Entity("Fiit.Api.Domain.InviteForm", b =>
+            modelBuilder.Entity("Fiit.Api.Domain.Invite", b =>
                 {
-                    b.HasOne("Fiit.Api.Domain.Subject", null)
+                    b.HasOne("Fiit.Api.Domain.Teacher", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_invites_teachers_author_id");
+
+                    b.HasOne("Fiit.Api.Domain.Subject", "Subject")
                         .WithMany()
                         .HasForeignKey("SubjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_invite_forms_subjects_subject_id");
+                        .HasConstraintName("fk_invites_subjects_subject_id");
 
-                    b.HasOne("Fiit.Api.Domain.Teacher", null)
-                        .WithMany()
-                        .HasForeignKey("TeacherId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_invite_forms_teachers_teacher_id");
+                    b.Navigation("Author");
+
+                    b.Navigation("Subject");
                 });
 
             modelBuilder.Entity("Fiit.Api.Domain.Notification", b =>
@@ -938,12 +1054,14 @@ namespace Fiit.Api.Data.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_reviews_submissions_submission_id");
 
-                    b.HasOne("Fiit.Api.Domain.Teacher", null)
+                    b.HasOne("Fiit.Api.Domain.Teacher", "Teacher")
                         .WithMany()
                         .HasForeignKey("TeacherId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_reviews_teachers_teacher_id");
+
+                    b.Navigation("Teacher");
                 });
 
             modelBuilder.Entity("Fiit.Api.Domain.StudentTag", b =>
@@ -980,7 +1098,7 @@ namespace Fiit.Api.Data.Migrations
                     b.HasOne("Fiit.Api.Domain.Homework", "Homework")
                         .WithMany()
                         .HasForeignKey("HomeworkId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_submissions_homeworks_homework_id");
 
@@ -1018,7 +1136,7 @@ namespace Fiit.Api.Data.Migrations
                     b.HasOne("Fiit.Api.Domain.Subtask", null)
                         .WithMany()
                         .HasForeignKey("SubtaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_subtask_scores_subtasks_subtask_id");
                 });
@@ -1031,6 +1149,17 @@ namespace Fiit.Api.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_tags_teachers_teacher_id");
+                });
+
+            modelBuilder.Entity("Fiit.Api.Domain.Teacher", b =>
+                {
+                    b.HasOne("Fiit.Api.Domain.Teacher", "AddedBy")
+                        .WithMany()
+                        .HasForeignKey("AddedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_teachers_teachers_added_by_id");
+
+                    b.Navigation("AddedBy");
                 });
 
             modelBuilder.Entity("homework_courses", b =>
@@ -1050,21 +1179,21 @@ namespace Fiit.Api.Data.Migrations
                         .HasConstraintName("fk_homework_courses_homeworks_homework_id");
                 });
 
-            modelBuilder.Entity("invite_form_courses", b =>
+            modelBuilder.Entity("invite_courses", b =>
                 {
                     b.HasOne("Fiit.Api.Domain.Course", null)
                         .WithMany()
                         .HasForeignKey("CoursesId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_invite_form_courses_courses_courses_id");
+                        .HasConstraintName("fk_invite_courses_courses_courses_id");
 
-                    b.HasOne("Fiit.Api.Domain.InviteForm", null)
+                    b.HasOne("Fiit.Api.Domain.Invite", null)
                         .WithMany()
-                        .HasForeignKey("InviteFormId")
+                        .HasForeignKey("InviteId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
-                        .HasConstraintName("fk_invite_form_courses_invite_forms_invite_form_id");
+                        .HasConstraintName("fk_invite_courses_invites_invite_id");
                 });
 
             modelBuilder.Entity("Fiit.Api.Domain.Course", b =>

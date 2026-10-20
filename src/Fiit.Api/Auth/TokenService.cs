@@ -9,6 +9,8 @@ namespace Fiit.Api.Auth;
 
 public class TokenService(IOptions<JwtOptions> options, TimeProvider time)
 {
+    public const string IssuedAtMsClaim = "iat_ms";
+
     public string Issue(Teacher teacher)
     {
         var o = options.Value;
@@ -16,7 +18,12 @@ public class TokenService(IOptions<JwtOptions> options, TimeProvider time)
         var token = new JwtSecurityToken(
             issuer: o.Issuer,
             audience: o.Audience,
-            claims: [new Claim(JwtRegisteredClaimNames.Sub, teacher.Id.ToString())],
+            claims:
+            [
+                new Claim(JwtRegisteredClaimNames.Sub, teacher.Id.ToString()),
+                // iat — в секундах; для сравнения с SessionsValidFrom нужна точность до миллисекунд
+                new Claim(IssuedAtMsClaim, now.ToUnixTimeMilliseconds().ToString(), ClaimValueTypes.Integer64),
+            ],
             notBefore: now.UtcDateTime,
             expires: now.Add(o.Lifetime).UtcDateTime,
             signingCredentials: new SigningCredentials(SigningKey(o), SecurityAlgorithms.HmacSha256));

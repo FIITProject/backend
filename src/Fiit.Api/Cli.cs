@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Fiit.Api;
 
-/// <summary>Служебные команды: <c>dotnet Fiit.Api.dll add-teacher &lt;login&gt; &lt;password&gt; &lt;full name&gt;</c>.</summary>
+/// <summary>Служебные команды: <c>dotnet Fiit.Api.dll add-teacher &lt;login&gt; &lt;password&gt; &lt;full name&gt;</c> — первый преподаватель заводится так (П-10).</summary>
 public static class Cli
 {
     public static bool IsCommand(string[] args) => args is ["add-teacher", ..];
@@ -27,11 +27,14 @@ public static class Cli
             return 1;
         }
 
+        var now = DateTimeOffset.UtcNow;
         db.Teachers.Add(new Teacher
         {
             Login = login,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            PasswordHash = Secrets.Hash(password),
             FullName = string.Join(' ', nameParts),
+            CreatedAt = now,
+            SessionsValidFrom = now,
         });
         await db.SaveChangesAsync();
         Console.WriteLine($"Teacher '{login}' created");

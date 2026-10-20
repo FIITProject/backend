@@ -31,10 +31,13 @@ namespace Fiit.Api.Data.Migrations
                 {
                     id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    telegram_user_id = table.Column<long>(type: "bigint", nullable: false),
+                    telegram_username = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     first_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     last_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    telegram_user_id = table.Column<long>(type: "bigint", nullable: true),
-                    telegram_username = table.Column<string>(type: "text", nullable: true)
+                    pd_consent_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    bot_blocked_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -47,7 +50,8 @@ namespace Fiit.Api.Data.Migrations
                 {
                     id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false)
+                    name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    normalized_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -62,11 +66,22 @@ namespace Fiit.Api.Data.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     login = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     password_hash = table.Column<string>(type: "text", nullable: false),
-                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false)
+                    full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    must_change_password = table.Column<bool>(type: "boolean", nullable: false),
+                    added_by_id = table.Column<int>(type: "integer", nullable: true),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    disabled_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    sessions_valid_from = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_teachers", x => x.id);
+                    table.ForeignKey(
+                        name: "fk_teachers_teachers_added_by_id",
+                        column: x => x.added_by_id,
+                        principalTable: "teachers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -97,12 +112,16 @@ namespace Fiit.Api.Data.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     student_id = table.Column<int>(type: "integer", nullable: false),
                     kind = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
-                    ref_id = table.Column<int>(type: "integer", nullable: false),
-                    status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    text = table.Column<string>(type: "text", nullable: false),
+                    homework_id = table.Column<int>(type: "integer", nullable: true),
+                    file_key = table.Column<string>(type: "text", nullable: true),
+                    file_name = table.Column<string>(type: "text", nullable: true),
+                    status = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
                     attempts = table.Column<int>(type: "integer", nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     available_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     locked_until = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    sent_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     last_error = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
@@ -124,11 +143,12 @@ namespace Fiit.Api.Data.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     subject_id = table.Column<int>(type: "integer", nullable: false),
                     semester_year = table.Column<int>(type: "integer", nullable: false),
-                    semester_term = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
+                    semester_term = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
                     author_id = table.Column<int>(type: "integer", nullable: false),
                     title = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
-                    link = table.Column<string>(type: "text", nullable: false),
+                    link = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
                     deadline = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     published_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
@@ -139,41 +159,43 @@ namespace Fiit.Api.Data.Migrations
                         column: x => x.subject_id,
                         principalTable: "subjects",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_homeworks_teachers_author_id",
                         column: x => x.author_id,
                         principalTable: "teachers",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
-                name: "invite_forms",
+                name: "invites",
                 columns: table => new
                 {
                     id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    teacher_id = table.Column<int>(type: "integer", nullable: false),
+                    code = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
+                    author_id = table.Column<int>(type: "integer", nullable: false),
                     subject_id = table.Column<int>(type: "integer", nullable: false),
-                    token = table.Column<string>(type: "text", nullable: false),
-                    expires_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                    expires_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    closed_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_invite_forms", x => x.id);
+                    table.PrimaryKey("pk_invites", x => x.id);
                     table.ForeignKey(
-                        name: "fk_invite_forms_subjects_subject_id",
+                        name: "fk_invites_subjects_subject_id",
                         column: x => x.subject_id,
                         principalTable: "subjects",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_invite_forms_teachers_teacher_id",
-                        column: x => x.teacher_id,
+                        name: "fk_invites_teachers_author_id",
+                        column: x => x.author_id,
                         principalTable: "teachers",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -183,7 +205,7 @@ namespace Fiit.Api.Data.Migrations
                     id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     teacher_id = table.Column<int>(type: "integer", nullable: false),
-                    name = table.Column<string>(type: "text", nullable: false)
+                    name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -205,8 +227,9 @@ namespace Fiit.Api.Data.Migrations
                     subject_id = table.Column<int>(type: "integer", nullable: false),
                     subgroup_id = table.Column<int>(type: "integer", nullable: false),
                     semester_year = table.Column<int>(type: "integer", nullable: false),
-                    semester_term = table.Column<string>(type: "character varying(10)", maxLength: 10, nullable: false),
+                    semester_term = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
                     admin_teacher_id = table.Column<int>(type: "integer", nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     archived_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
@@ -223,7 +246,7 @@ namespace Fiit.Api.Data.Migrations
                         column: x => x.subject_id,
                         principalTable: "subjects",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_courses_teachers_admin_teacher_id",
                         column: x => x.admin_teacher_id,
@@ -233,13 +256,38 @@ namespace Fiit.Api.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "homework_recipients",
+                columns: table => new
+                {
+                    homework_id = table.Column<int>(type: "integer", nullable: false),
+                    student_id = table.Column<int>(type: "integer", nullable: false),
+                    notified_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("pk_homework_recipients", x => new { x.homework_id, x.student_id });
+                    table.ForeignKey(
+                        name: "fk_homework_recipients_homeworks_homework_id",
+                        column: x => x.homework_id,
+                        principalTable: "homeworks",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_homework_recipients_students_student_id",
+                        column: x => x.student_id,
+                        principalTable: "students",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "homework_targets",
                 columns: table => new
                 {
                     id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     homework_id = table.Column<int>(type: "integer", nullable: false),
-                    kind = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    kind = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
                     ref_id = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
@@ -263,6 +311,7 @@ namespace Fiit.Api.Data.Migrations
                     student_id = table.Column<int>(type: "integer", nullable: false),
                     version = table.Column<int>(type: "integer", nullable: false),
                     file_key = table.Column<string>(type: "text", nullable: false),
+                    file_name = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
                     file_size = table.Column<long>(type: "bigint", nullable: false),
                     submitted_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
@@ -274,7 +323,7 @@ namespace Fiit.Api.Data.Migrations
                         column: x => x.homework_id,
                         principalTable: "homeworks",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "fk_submissions_students_student_id",
                         column: x => x.student_id,
@@ -291,7 +340,7 @@ namespace Fiit.Api.Data.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     homework_id = table.Column<int>(type: "integer", nullable: false),
                     order = table.Column<int>(type: "integer", nullable: false),
-                    title = table.Column<string>(type: "text", nullable: false),
+                    title = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
                     max_score = table.Column<decimal>(type: "numeric(8,2)", precision: 8, scale: 2, nullable: true)
                 },
                 constraints: table =>
@@ -361,8 +410,12 @@ namespace Fiit.Api.Data.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     student_id = table.Column<int>(type: "integer", nullable: false),
                     course_id = table.Column<int>(type: "integer", nullable: false),
-                    status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                    invite_id = table.Column<int>(type: "integer", nullable: true),
+                    status = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
+                    reject_reason = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    decided_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    decided_by_id = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -372,13 +425,25 @@ namespace Fiit.Api.Data.Migrations
                         column: x => x.course_id,
                         principalTable: "courses",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "fk_enrollments_invites_invite_id",
+                        column: x => x.invite_id,
+                        principalTable: "invites",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "fk_enrollments_students_student_id",
                         column: x => x.student_id,
                         principalTable: "students",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "fk_enrollments_teachers_decided_by_id",
+                        column: x => x.decided_by_id,
+                        principalTable: "teachers",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -406,25 +471,25 @@ namespace Fiit.Api.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "invite_form_courses",
+                name: "invite_courses",
                 columns: table => new
                 {
                     courses_id = table.Column<int>(type: "integer", nullable: false),
-                    invite_form_id = table.Column<int>(type: "integer", nullable: false)
+                    invite_id = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("pk_invite_form_courses", x => new { x.courses_id, x.invite_form_id });
+                    table.PrimaryKey("pk_invite_courses", x => new { x.courses_id, x.invite_id });
                     table.ForeignKey(
-                        name: "fk_invite_form_courses_courses_courses_id",
+                        name: "fk_invite_courses_courses_courses_id",
                         column: x => x.courses_id,
                         principalTable: "courses",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "fk_invite_form_courses_invite_forms_invite_form_id",
-                        column: x => x.invite_form_id,
-                        principalTable: "invite_forms",
+                        name: "fk_invite_courses_invites_invite_id",
+                        column: x => x.invite_id,
+                        principalTable: "invites",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -441,7 +506,12 @@ namespace Fiit.Api.Data.Migrations
                     comment = table.Column<string>(type: "text", nullable: true),
                     total_override = table.Column<decimal>(type: "numeric(8,2)", precision: 8, scale: 2, nullable: true),
                     updated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    draft_hash = table.Column<string>(type: "text", nullable: false),
                     sent_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    sent_hash = table.Column<string>(type: "text", nullable: true),
+                    sent_total = table.Column<decimal>(type: "numeric(8,2)", precision: 8, scale: 2, nullable: true),
+                    sent_comment = table.Column<string>(type: "text", nullable: true),
+                    sent_subtasks = table.Column<string>(type: "jsonb", nullable: true),
                     sent_file_key = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
@@ -458,39 +528,7 @@ namespace Fiit.Api.Data.Migrations
                         column: x => x.teacher_id,
                         principalTable: "teachers",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "applications",
-                columns: table => new
-                {
-                    id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    form_id = table.Column<int>(type: "integer", nullable: false),
-                    enrollment_id = table.Column<int>(type: "integer", nullable: false),
-                    first_name = table.Column<string>(type: "text", nullable: false),
-                    last_name = table.Column<string>(type: "text", nullable: false),
-                    telegram_hint = table.Column<string>(type: "text", nullable: true),
-                    pd_consent_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    bind_code = table.Column<string>(type: "text", nullable: false),
-                    bound_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("pk_applications", x => x.id);
-                    table.ForeignKey(
-                        name: "fk_applications_enrollments_enrollment_id",
-                        column: x => x.enrollment_id,
-                        principalTable: "enrollments",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "fk_applications_invite_forms_form_id",
-                        column: x => x.form_id,
-                        principalTable: "invite_forms",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -515,24 +553,8 @@ namespace Fiit.Api.Data.Migrations
                         column: x => x.subtask_id,
                         principalTable: "subtasks",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "ix_applications_bind_code",
-                table: "applications",
-                column: "bind_code",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "ix_applications_enrollment_id",
-                table: "applications",
-                column: "enrollment_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_applications_form_id",
-                table: "applications",
-                column: "form_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_course_accesses_teacher_id",
@@ -561,10 +583,21 @@ namespace Fiit.Api.Data.Migrations
                 column: "course_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_enrollments_decided_by_id",
+                table: "enrollments",
+                column: "decided_by_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_enrollments_invite_id",
+                table: "enrollments",
+                column: "invite_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_enrollments_student_id_course_id",
                 table: "enrollments",
                 columns: new[] { "student_id", "course_id" },
-                unique: true);
+                unique: true,
+                filter: "status IN ('Pending', 'Approved')");
 
             migrationBuilder.CreateIndex(
                 name: "ix_groups_name",
@@ -578,6 +611,11 @@ namespace Fiit.Api.Data.Migrations
                 column: "homework_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_homework_recipients_student_id",
+                table: "homework_recipients",
+                column: "student_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_homework_targets_homework_id",
                 table: "homework_targets",
                 column: "homework_id");
@@ -588,30 +626,30 @@ namespace Fiit.Api.Data.Migrations
                 column: "author_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_homeworks_subject_id",
+                name: "ix_homeworks_subject_id_semester_year_semester_term",
                 table: "homeworks",
-                column: "subject_id");
+                columns: new[] { "subject_id", "semester_year", "semester_term" });
 
             migrationBuilder.CreateIndex(
-                name: "ix_invite_form_courses_invite_form_id",
-                table: "invite_form_courses",
-                column: "invite_form_id");
+                name: "ix_invite_courses_invite_id",
+                table: "invite_courses",
+                column: "invite_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_invite_forms_subject_id",
-                table: "invite_forms",
-                column: "subject_id");
+                name: "ix_invites_author_id",
+                table: "invites",
+                column: "author_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_invite_forms_teacher_id",
-                table: "invite_forms",
-                column: "teacher_id");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_invite_forms_token",
-                table: "invite_forms",
-                column: "token",
+                name: "ix_invites_code",
+                table: "invites",
+                column: "code",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_invites_subject_id",
+                table: "invites",
+                column: "subject_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_notifications_status_available_at",
@@ -653,6 +691,12 @@ namespace Fiit.Api.Data.Migrations
                 .Annotation("Npgsql:NullsDistinct", false);
 
             migrationBuilder.CreateIndex(
+                name: "ix_subjects_normalized_name",
+                table: "subjects",
+                column: "normalized_name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "ix_submissions_homework_id_student_id_version",
                 table: "submissions",
                 columns: new[] { "homework_id", "student_id", "version" },
@@ -680,6 +724,11 @@ namespace Fiit.Api.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "ix_teachers_added_by_id",
+                table: "teachers",
+                column: "added_by_id");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_teachers_login",
                 table: "teachers",
                 column: "login",
@@ -690,19 +739,22 @@ namespace Fiit.Api.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "applications");
+                name: "course_accesses");
 
             migrationBuilder.DropTable(
-                name: "course_accesses");
+                name: "enrollments");
 
             migrationBuilder.DropTable(
                 name: "homework_courses");
 
             migrationBuilder.DropTable(
+                name: "homework_recipients");
+
+            migrationBuilder.DropTable(
                 name: "homework_targets");
 
             migrationBuilder.DropTable(
-                name: "invite_form_courses");
+                name: "invite_courses");
 
             migrationBuilder.DropTable(
                 name: "notifications");
@@ -714,10 +766,10 @@ namespace Fiit.Api.Data.Migrations
                 name: "subtask_scores");
 
             migrationBuilder.DropTable(
-                name: "enrollments");
+                name: "courses");
 
             migrationBuilder.DropTable(
-                name: "invite_forms");
+                name: "invites");
 
             migrationBuilder.DropTable(
                 name: "tags");
@@ -729,22 +781,19 @@ namespace Fiit.Api.Data.Migrations
                 name: "subtasks");
 
             migrationBuilder.DropTable(
-                name: "courses");
+                name: "subgroups");
 
             migrationBuilder.DropTable(
                 name: "submissions");
 
             migrationBuilder.DropTable(
-                name: "subgroups");
+                name: "groups");
 
             migrationBuilder.DropTable(
                 name: "homeworks");
 
             migrationBuilder.DropTable(
                 name: "students");
-
-            migrationBuilder.DropTable(
-                name: "groups");
 
             migrationBuilder.DropTable(
                 name: "subjects");

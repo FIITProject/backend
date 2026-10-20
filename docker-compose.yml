@@ -1,4 +1,7 @@
-# Локальная разработка: postgres + api. Запуск: docker compose up -d --build
+# Локальная разработка: postgres + S3 (RustFS) + api + web.
+# Запуск: docker compose up -d --build, затем первый преподаватель:
+#   docker compose exec api dotnet Fiit.Api.dll add-teacher admin admin-password Иванов Иван Иванович
+# Сайт: http://localhost:8080 (API — /api, эмулятор бота — раздел «Бот (эмулятор)»).
 services:
   db:
     image: postgres:17
@@ -15,17 +18,48 @@ services:
       interval: 2s
       retries: 30
 
+  # S3-совместимое хранилище вместо Yandex Object Storage
+  s3:
+    image: rustfs/rustfs:1.0.3
+    command: ["/data"]
+    environment:
+      RUSTFS_ACCESS_KEY: fiit
+      RUSTFS_SECRET_KEY: fiit-minio-secret
+    ports:
+      - "9000:9000"
+    volumes:
+      - s3-data:/data
+
   api:
     build: .
     depends_on:
       db:
         condition: service_healthy
+      s3:
+        condition: service_started
+    restart: on-failure
     environment:
       ConnectionStrings__Db: Host=db;Database=fiit;Username=fiit;Password=fiit
       Jwt__Key: ${JWT_KEY:-dev-only-key-change-me-dev-only-key-change-me}
-      Cors__Origins__0: http://localhost:5173
+      Bot__Key: ${BOT_KEY:-dev-bot-key}
+      Bot__Username: ${BOT_USERNAME:-fiit_hw_bot}
+      Storage__ServiceUrl: http://s3:9000
+      Storage__AccessKey: fiit
+      Storage__SecretKey: fiit-minio-secret
+      Storage__Bucket: fiit-homeworks
+      Storage__CreateBucket: "true"
     ports:
-      - "8080:8080"
+      - "5080:8080"
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
 
 volumes:
   db-data:
+  s3-data:

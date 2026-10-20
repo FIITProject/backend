@@ -15,4 +15,6 @@ public class Subgroup
     public int GroupId { get; set; }
     public Group Group { get; set; } = null!;
     public int? Number { get; set; }
+
+    public static string FullName(string group, int? number) => number is null ? group : $"{group}-{number}";
 }
