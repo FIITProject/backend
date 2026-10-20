@@ -1,0 +1,86 @@
+@page "/teachers"
+@inject Api Api
+@inject Session Session
+
+<h1>Преподаватели</h1>
+
+<div class="panel">
+    <h2 style="margin-top:0">Добавить преподавателя</h2>
+    <div class="row">
+        <div class="field"><label>ФИО</label><input @bind="_fullName" placeholder="Иванов Иван Иванович" style="width:280px" /></div>
+        <div class="field"><label>Логин (например, почта)</label><input @bind="_login" /></div>
+        <div class="field"><label>&nbsp;</label><button class="primary" @onclick="Create">Добавить</button></div>
+    </div>
+    <p class="muted">Система выдаст временный пароль — он показывается один раз, передайте его коллеге. При первом входе он сменит пароль.</p>
+    <ErrorBox Message="@_error" />
+    @if (_temp is not null)
+    {
+        <div class="success">Логин: <span class="secret">@_temp.Login</span> Временный пароль: <span class="secret">@_temp.TempPassword</span></div>
+    }
+</div>
+
+<table>
+    <thead><tr><th>ФИО</th><th>Логин</th><th>Кто добавил</th><th>Добавлен</th><th>Статус</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var t in _teachers)
+        {
+            <tr>
+                <td>@t.FullName @if (t.Id == Session.Me?.Id) { <span class="badge ok">вы</span> }</td>
+                <td>@t.Login</td>
+                <td>@(t.AddedByName ?? "—")</td>
+                <td>@Fmt.Dt(t.CreatedAt)</td>
+                <td><span class="badge @(t.IsDisabled ? "bad" : "ok")">@(t.IsDisabled ? "отключён" : "активен")</span></td>
+                <td class="row">
+                    @if (t.Id != Session.Me?.Id)
+                    {
+                        <button class="small" @onclick="() => Reset(t)">Сбросить пароль</button>
+                    }
+                    @if (t.CanDisable)
+                    {
+                        @if (t.IsDisabled)
+                        {
+                            <button class="small" @onclick='() => Run(() => Api.Post($"api/teachers/{t.Id}/enable"))'>Включить</button>
+                        }
+                        else
+                        {
+                            <button class="small danger" @onclick='() => Run(() => Api.Post($"api/teachers/{t.Id}/disable"))'>Отключить</button>
+                        }
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private TeacherDto[] _teachers = [];
+    private string _fullName = "", _login = "";
+    private string? _error;
+    private TempPasswordResponse? _temp;
+
+    protected override Task OnInitializedAsync() => Load();
+
+    private async Task Load() => _teachers = await Api.Get<TeacherDto[]>("api/teachers");
+
+    private Task Create() => Run(async () =>
+    {
+        _temp = await Api.Post<TempPasswordResponse>("api/teachers", new CreateTeacherRequest(_fullName, _login));
+        _fullName = _login = "";
+    });
+
+    private Task Reset(TeacherDto t) => Run(async () => _temp = await Api.Post<TempPasswordResponse>($"api/teachers/{t.Id}/reset-password"));
+
+    private async Task Run(Func<Task> action)
+    {
+        _error = null;
+        try
+        {
+            await action();
+            await Load();
+        }
+        catch (ApiError e)
+        {
+            _error = e.Message;
+        }
+    }
+}

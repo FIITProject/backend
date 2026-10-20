@@ -1,0 +1,172 @@
+@page "/gradebook"
+@inject Api Api
+@inject Prefs Prefs
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<h1>Сводная таблица</h1>
+
+<SubjectSemesterPicker OnChange="SubjectChanged">
+    <div class="field">
+        <label>Курс</label>
+        <select @bind="_courseId" @bind:after="Load">
+            <option value="0">Все</option>
+            @foreach (var c in _courses)
+            {
+                <option value="@c.Id">@c.SubgroupName @(c.IsArchived ? "(архив)" : "")</option>
+            }
+        </select>
+    </div>
+    <div class="field">
+        <label>Группа</label>
+        <select @bind="_group" @bind:after="Load">
+            <option value="">Все</option>
+            @foreach (var g in _courses.Select(c => c.GroupName).Distinct())
+            {
+                <option value="@g">@g</option>
+            }
+        </select>
+    </div>
+    <div class="field">
+        <label>Метка</label>
+        <select @bind="_tagId" @bind:after="Load">
+            <option value="0">Любая</option>
+            @foreach (var t in _tags)
+            {
+                <option value="@t.Id">@t.Name</option>
+            }
+        </select>
+    </div>
+    <div class="field"><label>&nbsp;</label><button @onclick="Export" disabled="@(_book is null)">Экспорт в Excel</button></div>
+</SubjectSemesterPicker>
+<ErrorBox Message="@_error" />
+
+@if (_card is { } card)
+{
+    <div class="panel" style="margin-top:12px">
+        <b>@card.Title</b> — дедлайн @Fmt.Dt(card.Deadline) — <a href="@card.Link" target="_blank">условие</a> —
+        назначено @card.AssignedCount, сдано @card.SubmittedCount, проверено @card.ReviewedCount
+        <a class="btn small" href="homeworks/@card.Id">Открыть ДЗ</a>
+        <button class="small" @onclick="() => _card = null">✕</button>
+    </div>
+}
+
+@if (_book is { } book)
+{
+    <div class="gradebook" style="margin-top:12px">
+        <table>
+            <thead>
+                <tr>
+                    <th>Фамилия Имя</th>
+                    <th>Подгруппа</th>
+                    @foreach (var h in book.Homeworks)
+                    {
+                        <th title="Дедлайн @Fmt.Dt(h.Deadline)" @onclick="() => _card = h">@h.Title<div class="muted">до @Fmt.Dt(h.Deadline)</div></th>
+                    }
+                    <th>Среднее</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in book.Rows)
+                {
+                    <tr>
+                        <td>@r.LastName @r.FirstName</td>
+                        <td>@r.SubgroupName</td>
+                        @foreach (var c in r.Cells)
+                        {
+                            var clickable = c.LatestSubmissionId is not null;
+                            <td class="cell cell-@c.Status @(clickable ? "clickable" : "")" @onclick="() => Open(r, c)">
+                                @if (c.Score is not null && c.Status is CellStatus.Reviewed or CellStatus.ReviewedWithUnsentChanges)
+                                {
+                                    <div class="score">@Fmt.Score(c.Score)</div>
+                                }
+                                <div>@Fmt.Status(c.Status)</div>
+                                @if (c.IsLate) { <span class="late">опоздание</span> }
+                                @if (c.Versions > 1) { <span class="muted"> v@(c.Versions)</span> }
+                            </td>
+                        }
+                        <td><b>@Fmt.Score(r.Average)</b></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    @if (book.Rows.Length == 0)
+    {
+        <p class="muted">Нет подтверждённых студентов в выбранных курсах.</p>
+    }
+}
+
+@code {
+    private CourseDto[] _courses = [];
+    private TagDto[] _tags = [];
+    private GradebookDto? _book;
+    private GradebookHomework? _card;
+    private int _courseId, _tagId;
+    private string _group = "";
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => _tags = await Api.Get<TagDto[]>("api/tags");
+
+    private async Task SubjectChanged()
+    {
+        _courseId = 0;
+        _group = "";
+        if (Prefs.SubjectId is { } sid && Prefs.Semester is { } sem)
+        {
+            var q = $"subjectId={sid}&semesterYear={sem.Year}&semesterTerm={sem.Term}";
+            _courses = (await Api.Get<CourseDto[]>($"api/courses?{q}")).Concat(await Api.Get<CourseDto[]>($"api/courses?archived=true&{q}")).ToArray();
+        }
+        await Load();
+    }
+
+    private string Query()
+    {
+        var sem = Prefs.Semester!;
+        var q = $"subjectId={Prefs.SubjectId}&semesterYear={sem.Year}&semesterTerm={sem.Term}";
+        if (_courseId != 0) q += $"&courseIds={_courseId}";
+        if (_group != "") q += $"&group={Uri.EscapeDataString(_group)}";
+        if (_tagId != 0) q += $"&tagId={_tagId}";
+        return q;
+    }
+
+    private async Task Load()
+    {
+        _error = null;
+        _card = null;
+        if (Prefs.SubjectId is null || Prefs.Semester is null)
+        {
+            _book = null;
+            return;
+        }
+        try
+        {
+            _book = await Api.Get<GradebookDto>($"api/gradebook?{Query()}");
+            Prefs.LastGradebook = _book;
+        }
+        catch (ApiError e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private void Open(GradebookRow row, GradebookCell cell)
+    {
+        if (cell.LatestSubmissionId is not null)
+            Nav.NavigateTo($"review/{cell.HomeworkId}/{row.StudentId}");
+    }
+
+    private async Task Export()
+    {
+        try
+        {
+            var bytes = await Api.Bytes($"api/gradebook/export.xlsx?{Query()}");
+            var subject = _courses.FirstOrDefault()?.SubjectName ?? "оценки";
+            await JS.InvokeVoidAsync("fiit.saveFile", $"{subject} {Prefs.Semester}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes);
+        }
+        catch (ApiError e)
+        {
+            _error = e.Message;
+        }
+    }
+}

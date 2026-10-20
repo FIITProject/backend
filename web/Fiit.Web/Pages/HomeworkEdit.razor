@@ -1,0 +1,319 @@
+@page "/homeworks/new"
+@page "/homeworks/{Id:int}"
+@inject Api Api
+@inject Prefs Prefs
+@inject NavigationManager Nav
+
+<h1>@(Id is null ? "Новое ДЗ" : _hw?.IsPublished == true ? "ДЗ (опубликовано)" : "ДЗ (черновик)")</h1>
+@if (_subjectName is not null)
+{
+    <p class="muted">@_subjectName · @_semester</p>
+}
+<ErrorBox Message="@_error" />
+
+@if (_loaded)
+{
+    <div class="panel">
+        <div class="grid2">
+            <div class="field"><label>Название</label><input @bind="_title" disabled="@ReadOnly" /></div>
+            <div class="field"><label>Ссылка на условие</label><input type="url" @bind="_link" placeholder="https://…" disabled="@ReadOnly" /></div>
+            <div class="field"><label>Дедлайн (время Екатеринбурга)</label><input type="datetime-local" value="@_deadline" @onchange="e => _deadline = e.Value?.ToString()" disabled="@ReadOnly" /></div>
+        </div>
+
+        <h2>Подзадачи (необязательно)</h2>
+        @if (_hw?.SubtasksLocked == true)
+        {
+            <p class="muted">По подзадачам уже выставлены баллы — менять их нельзя.</p>
+        }
+        @for (var i = 0; i < _subtasks.Count; i++)
+        {
+            var index = i;
+            var s = _subtasks[index];
+            <div class="row" style="margin-bottom:4px">
+                <span class="muted">@(index + 1).</span>
+                <input @bind="s.Title" placeholder="Название" style="width:300px" disabled="@SubtasksLocked" />
+                <input type="number" step="0.5" min="0" @bind="s.MaxScore" placeholder="Макс. балл" style="width:110px" disabled="@SubtasksLocked" />
+                @if (!SubtasksLocked)
+                {
+                    <button class="small" @onclick="() => Move(index, -1)" disabled="@(index == 0)">↑</button>
+                    <button class="small" @onclick="() => Move(index, 1)" disabled="@(index == _subtasks.Count - 1)">↓</button>
+                    <button class="small danger" @onclick="() => _subtasks.RemoveAt(index)">✕</button>
+                }
+            </div>
+        }
+        @if (!SubtasksLocked)
+        {
+            <button class="small" @onclick="() => _subtasks.Add(new SubtaskRow())">+ подзадача</button>
+        }
+
+        <h2>Курсы ДЗ</h2>
+        <div class="row">
+            @foreach (var c in _courseOptions)
+            {
+                <label><input type="checkbox" checked="@_courseIds.Contains(c.Id)" @onchange="() => ToggleCourse(c.Id)" disabled="@ReadOnly" /> @c.Name</label>
+            }
+        </div>
+        @if (_courseOptions.Count == 0)
+        {
+            <p class="muted">Нет активных курсов этого предмета в семестре.</p>
+        }
+
+        <h2>Адресаты</h2>
+        <div class="row">
+            <label><input type="radio" name="mode" checked="@(!_narrow)" @onchange="() => SetNarrow(false)" disabled="@ReadOnly" /> Все студенты выбранных курсов</label>
+            <label><input type="radio" name="mode" checked="@_narrow" @onchange="() => SetNarrow(true)" disabled="@ReadOnly" /> Только выбранные (студенты, метки, отдельные курсы)</label>
+        </div>
+        @if (_narrow)
+        {
+            <div class="grid2" style="margin-top:8px">
+                <div class="col">
+                    <span class="label">Курсы целиком</span>
+                    @foreach (var c in _courseOptions.Where(c => _courseIds.Contains(c.Id)))
+                    {
+                        <label><input type="checkbox" checked="@Has(HomeworkTargetKind.Course, c.Id)" @onchange="() => ToggleTarget(HomeworkTargetKind.Course, c.Id)" disabled="@ReadOnly" /> @c.Name</label>
+                    }
+                </div>
+                <div class="col">
+                    <span class="label">Метки</span>
+                    @foreach (var t in _tags)
+                    {
+                        <label><input type="checkbox" checked="@Has(HomeworkTargetKind.Tag, t.Id)" @onchange="() => ToggleTarget(HomeworkTargetKind.Tag, t.Id)" disabled="@ReadOnly" /> @t.Name</label>
+                    }
+                    @foreach (var t in _targets.Where(t => t.Kind == HomeworkTargetKind.Tag && _tags.All(x => x.Id != t.RefId)))
+                    {
+                        <span class="muted">метка коллеги #@t.RefId</span>
+                    }
+                </div>
+                <div class="col">
+                    <span class="label">Студенты</span>
+                    @foreach (var s in _students)
+                    {
+                        <label><input type="checkbox" checked="@Has(HomeworkTargetKind.Student, s.StudentId)" @onchange="() => ToggleTarget(HomeworkTargetKind.Student, s.StudentId)" disabled="@ReadOnly" /> @s.LastName @s.FirstName <span class="muted">@s.CourseName</span></label>
+                    }
+                </div>
+            </div>
+        }
+        <p><b>ДЗ получат: @_recipients студ.</b></p>
+
+        @if (_hw?.IsPublished == true && !ReadOnly)
+        {
+            <label><input type="checkbox" @bind="_notify" /> Уведомить студентов об изменении дедлайна и подзадач</label>
+            <p class="muted">После публикации круг адресатов можно только расширить; новые адресаты получат уведомление о ДЗ.</p>
+        }
+
+        <div class="row" style="margin-top:12px">
+            @if (!ReadOnly)
+            {
+                <button class="primary" @onclick="Save">Сохранить</button>
+            }
+            @if (_hw is { IsPublished: false } && !ReadOnly)
+            {
+                <button @onclick="AskPublish">Опубликовать…</button>
+            }
+            @if (_hw is not null && (!_hw.IsPublished || _hw.SubmittedCount == 0))
+            {
+                <button class="danger" @onclick="Delete">Удалить</button>
+            }
+            <a class="btn" href="homeworks">К списку</a>
+        </div>
+        @if (_saved)
+        {
+            <div class="success">Сохранено</div>
+        }
+        @if (_confirmPublish)
+        {
+            <div class="panel" style="margin-top:12px;border-color:var(--accent)">
+                ДЗ получат <b>@_recipients</b> студ. Опубликовать и разослать уведомления?
+                <div class="row" style="margin-top:8px">
+                    <button class="primary" @onclick="Publish">Опубликовать</button>
+                    <button @onclick="() => _confirmPublish = false">Отмена</button>
+                </div>
+            </div>
+        }
+        @if (_hw?.IsPublished == true)
+        {
+            <p class="muted">Опубликовано @Fmt.Dt(_hw.PublishedAt). Сдано @_hw.SubmittedCount из @_hw.RecipientsCount, проверено @_hw.ReviewedCount.</p>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private class SubtaskRow
+    {
+        public int? Id { get; set; }
+        public string Title { get; set; } = "";
+        public decimal? MaxScore { get; set; }
+    }
+
+    private HomeworkDto? _hw;
+    private bool _loaded, _narrow, _notify = true, _saved, _confirmPublish;
+    private string? _error, _subjectName;
+    private int _subjectId;
+    private SemesterDto _semester = null!;
+    private string _title = "", _link = "";
+    private string? _deadline;
+    private List<SubtaskRow> _subtasks = [];
+    private List<CourseRef> _courseOptions = [];
+    private HashSet<int> _courseIds = [];
+    private List<HomeworkTargetDto> _targets = [];
+    private TagDto[] _tags = [];
+    private EnrollmentDto[] _students = [];
+    private int _recipients;
+
+    private bool ReadOnly => _hw?.IsReadOnly == true;
+    private bool SubtasksLocked => ReadOnly || _hw?.SubtasksLocked == true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            _tags = await Api.Get<TagDto[]>("api/tags");
+            if (Id is { } id)
+            {
+                _hw = await Api.Get<HomeworkDto>($"api/homeworks/{id}");
+                _subjectId = _hw.SubjectId;
+                _subjectName = _hw.SubjectName;
+                _semester = _hw.Semester;
+                _title = _hw.Title;
+                _link = _hw.Link;
+                _deadline = Fmt.ToInput(_hw.Deadline);
+                _subtasks = _hw.Subtasks.Select(s => new SubtaskRow { Id = s.Id, Title = s.Title, MaxScore = s.MaxScore }).ToList();
+                _courseIds = _hw.Courses.Select(c => c.Id).ToHashSet();
+                _targets = _hw.Targets.ToList();
+                _narrow = _targets.Count > 0;
+            }
+            else
+            {
+                if (Prefs.SubjectId is not { } sid || Prefs.Semester is not { } sem)
+                {
+                    Nav.NavigateTo("homeworks");
+                    return;
+                }
+                _subjectId = sid;
+                _semester = sem;
+                // По умолчанию — через неделю в 23:59 по Екатеринбургу
+                _deadline = Fmt.ToInput(new DateTimeOffset(DateTimeOffset.UtcNow.ToOffset(Fmt.Offset).Date.AddDays(7).AddHours(23).AddMinutes(59), Fmt.Offset));
+            }
+
+            var active = await Api.Get<CourseDto[]>($"api/courses?subjectId={_subjectId}&semesterYear={_semester.Year}&semesterTerm={_semester.Term}");
+            _subjectName ??= active.FirstOrDefault()?.SubjectName;
+            _courseOptions = active.Select(c => new CourseRef(c.Id, c.SubgroupName))
+                .Concat(_hw?.Courses ?? []).DistinctBy(c => c.Id).OrderBy(c => c.Name).ToList();
+            if (Id is null)
+                _courseIds = _courseOptions.Select(c => c.Id).ToHashSet();
+            await Refresh();
+            _loaded = true;
+        }
+        catch (ApiError e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task Refresh()
+    {
+        _students = _courseIds.Count == 0
+            ? []
+            : await Api.Get<EnrollmentDto[]>("api/enrollments?status=Approved&" + string.Join('&', _courseIds.Select(c => $"courseIds={c}")));
+        _targets.RemoveAll(t => t.Kind == HomeworkTargetKind.Course && !_courseIds.Contains(t.RefId));
+        _recipients = _courseIds.Count == 0
+            ? 0
+            : (await Api.Post<RecipientsPreviewResponse>("api/homeworks/preview-recipients", new RecipientsPreviewRequest(_courseIds.ToArray(), Targets()))).Count;
+    }
+
+    private HomeworkTargetDto[] Targets() => _narrow ? _targets.ToArray() : [];
+
+    private bool Has(HomeworkTargetKind kind, int id) => _targets.Any(t => t.Kind == kind && t.RefId == id);
+
+    private async Task ToggleTarget(HomeworkTargetKind kind, int id)
+    {
+        if (_targets.RemoveAll(t => t.Kind == kind && t.RefId == id) == 0)
+            _targets.Add(new HomeworkTargetDto(kind, id));
+        await Refresh();
+    }
+
+    private async Task ToggleCourse(int id)
+    {
+        if (!_courseIds.Remove(id))
+            _courseIds.Add(id);
+        await Refresh();
+    }
+
+    private async Task SetNarrow(bool narrow)
+    {
+        _narrow = narrow;
+        await Refresh();
+    }
+
+    private void Move(int index, int delta)
+    {
+        var row = _subtasks[index];
+        _subtasks.RemoveAt(index);
+        _subtasks.Insert(index + delta, row);
+    }
+
+    private HomeworkEditRequest Request() => new(_subjectId, _semester, _title, _link,
+        Fmt.FromInput(_deadline) ?? throw new ApiError(System.Net.HttpStatusCode.BadRequest, "Укажите дедлайн", null),
+        _subtasks.Select(s => new SubtaskDto(s.Id, s.Title, s.MaxScore)).ToArray(),
+        _courseIds.ToArray(), Targets(), _notify);
+
+    private async Task Save()
+    {
+        _error = null;
+        _saved = false;
+        try
+        {
+            if (Id is null)
+            {
+                var created = await Api.Post<HomeworkDto>("api/homeworks", Request());
+                Nav.NavigateTo($"homeworks/{created.Id}");
+                return;
+            }
+            _hw = await Api.Put<HomeworkDto>($"api/homeworks/{Id}", Request());
+            _subtasks = _hw.Subtasks.Select(s => new SubtaskRow { Id = s.Id, Title = s.Title, MaxScore = s.MaxScore }).ToList();
+            _saved = true;
+        }
+        catch (ApiError e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task AskPublish()
+    {
+        await Save();
+        if (_error is null)
+            _confirmPublish = true;
+    }
+
+    private async Task Publish()
+    {
+        _error = null;
+        try
+        {
+            await Api.Post<PublishResponse>($"api/homeworks/{Id}/publish");
+            _confirmPublish = false;
+            _hw = await Api.Get<HomeworkDto>($"api/homeworks/{Id}");
+        }
+        catch (ApiError e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    private async Task Delete()
+    {
+        _error = null;
+        try
+        {
+            await Api.Delete($"api/homeworks/{Id}");
+            Nav.NavigateTo("homeworks");
+        }
+        catch (ApiError e)
+        {
+            _error = e.Message;
+        }
+    }
+}

@@ -1,0 +1,119 @@
+:root {
+    --bg: #f6f7f9;
+    --panel: #ffffff;
+    --text: #1d2330;
+    --muted: #6b7280;
+    --border: #dfe3ea;
+    --accent: #2563eb;
+    --accent-weak: #e8efff;
+    --danger: #c62828;
+    --ok: #1b7f3b;
+    --warn: #b26a00;
+    --radius: 6px;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+    color: var(--text);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); }
+a { color: var(--accent); }
+h1 { font-size: 20px; margin: 0 0 16px; }
+h2 { font-size: 16px; margin: 20px 0 10px; }
+.loading { padding: 40px; color: var(--muted); }
+
+/* Шапка */
+.topbar { display: flex; align-items: center; gap: 4px; padding: 0 16px; height: 48px; background: #1f2937; color: #fff; position: sticky; top: 0; z-index: 10; }
+.topbar .brand { font-weight: 600; margin-right: 16px; }
+.topbar a { color: #cbd5e1; text-decoration: none; padding: 6px 10px; border-radius: var(--radius); }
+.topbar a.active, .topbar a:hover { background: #374151; color: #fff; }
+.topbar .spacer { flex: 1; }
+.topbar .user { color: #cbd5e1; margin-right: 8px; }
+main { padding: 20px 24px; max-width: 1400px; }
+main.wide { max-width: none; }
+
+/* Формы */
+input, select, textarea, button { font: inherit; }
+input[type=text], input[type=password], input[type=number], input[type=url], input[type=datetime-local], input:not([type]), select, textarea {
+    border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; background: #fff; min-width: 0;
+}
+textarea { resize: vertical; }
+button, .btn { border: 1px solid var(--border); background: #fff; border-radius: var(--radius); padding: 6px 12px; cursor: pointer; color: var(--text); text-decoration: none; display: inline-block; }
+button:hover:not(:disabled), .btn:hover { border-color: #b8c0cc; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.danger { color: var(--danger); }
+button:disabled { opacity: .5; cursor: default; }
+button.small { padding: 2px 8px; font-size: 12px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.col { display: flex; flex-direction: column; gap: 4px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label, .label { color: var(--muted); font-size: 12px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+.muted { color: var(--muted); }
+.error { color: var(--danger); background: #fdecec; border: 1px solid #f5c2c2; padding: 8px 12px; border-radius: var(--radius); margin: 8px 0; white-space: pre-wrap; }
+.success { color: var(--ok); background: #e7f6ec; border: 1px solid #b7e1c4; padding: 8px 12px; border-radius: var(--radius); margin: 8px 0; }
+.secret { font-family: ui-monospace, monospace; font-size: 16px; background: #fff7d6; padding: 2px 6px; border-radius: 4px; }
+.mono { font-family: ui-monospace, monospace; }
+
+/* Таблицы */
+table { border-collapse: collapse; width: 100%; background: #fff; }
+th, td { border-bottom: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; }
+th { background: #f0f2f5; font-weight: 600; font-size: 12px; color: #4b5563; position: sticky; top: 48px; }
+tr.selected td { background: var(--accent-weak); }
+.badge { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 12px; background: #eef0f3; color: #374151; margin-right: 4px; }
+.badge.ok { background: #e7f6ec; color: var(--ok); }
+.badge.warn { background: #fff3dc; color: var(--warn); }
+.badge.bad { background: #fdecec; color: var(--danger); }
+
+/* Сводная таблица */
+.gradebook { overflow: auto; max-height: calc(100vh - 220px); border: 1px solid var(--border); }
+.gradebook th { top: 0; white-space: nowrap; cursor: pointer; }
+.gradebook td.cell { text-align: center; min-width: 90px; cursor: default; font-size: 12px; white-space: nowrap; }
+.gradebook td.cell.clickable { cursor: pointer; }
+.gradebook td.cell.clickable:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+.cell-NotAssigned { background: #fafafa; color: #b0b6bf; }
+.cell-NotSubmitted { background: #fff; color: var(--muted); }
+.cell-Overdue { background: #fdecec; color: var(--danger); }
+.cell-OnReview { background: #fff3dc; color: var(--warn); }
+.cell-Reviewed { background: #e7f6ec; color: var(--ok); }
+.cell-ReviewedWithUnsentChanges { background: #e6f0ff; color: #1e40af; }
+.cell .score { font-size: 14px; font-weight: 600; }
+.cell .late { color: var(--danger); }
+
+/* Проверка */
+.review { display: grid; grid-template-columns: 1fr 360px; gap: 16px; height: calc(100vh - 88px); }
+.review .viewer { display: flex; flex-direction: column; min-width: 0; background: #e5e7eb; border-radius: var(--radius); }
+.review .toolbar { display: flex; gap: 6px; align-items: center; padding: 8px; background: #fff; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.review .toolbar button.on { background: var(--accent-weak); border-color: var(--accent); }
+.review .pages { overflow: auto; flex: 1; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.review .side { overflow: auto; }
+.pdf-page { position: relative; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, .2); flex: none; }
+.pdf-page canvas { position: absolute; left: 0; top: 0; }
+.pdf-overlay { touch-action: none; }
+.pages[data-tool=pen] .pdf-overlay, .pages[data-tool=marker] .pdf-overlay { cursor: crosshair; }
+.pages[data-tool=text] .pdf-overlay { cursor: text; }
+.pages[data-tool=eraser] .pdf-overlay { cursor: cell; }
+.pdf-text-editor { position: absolute; z-index: 5; min-width: 160px; min-height: 2.4em; background: rgba(255, 255, 255, .9); border: 1px dashed var(--accent); font-family: "DejaVu Sans", Arial, sans-serif; line-height: 1.2; padding: 0; }
+.versions button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+.swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--border); padding: 0; }
+.swatch.on { box-shadow: 0 0 0 2px var(--accent); }
+
+/* Эмулятор бота */
+.emulator { display: grid; grid-template-columns: 260px 1fr; gap: 16px; height: calc(100vh - 170px); min-height: 400px; }
+.chats { overflow: auto; }
+.chats .chat-item { padding: 8px; border-radius: var(--radius); cursor: pointer; border: 1px solid transparent; }
+.chats .chat-item.on { background: #fff; border-color: var(--border); }
+.chat { display: flex; flex-direction: column; background: #dfe7ef; border-radius: var(--radius); min-height: 0; }
+.chat .log { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.msg { max-width: 70%; padding: 8px 12px; border-radius: 10px; white-space: pre-wrap; word-break: break-word; }
+.msg.bot { background: #fff; align-self: flex-start; }
+.msg.me { background: #d9fdd3; align-self: flex-end; }
+.msg .time { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.msg .buttons { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.msg .buttons button { background: #f1f5f9; }
+.chat .input { display: flex; gap: 8px; padding: 8px; background: #fff; border-top: 1px solid var(--border); align-items: center; }
+.chat .input input[type=text] { flex: 1; }
+
+#blazor-error-ui { background: #ffe8a1; bottom: 0; box-shadow: 0 -1px 2px rgba(0, 0, 0, .2); display: none; left: 0; padding: .6rem 1.25rem; position: fixed; width: 100%; z-index: 1000; }
+#blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: .75rem; top: .5rem; }

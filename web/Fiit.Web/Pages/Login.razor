@@ -1,0 +1,45 @@
+@page "/login"
+@inject Api Api
+@inject Session Session
+@inject NavigationManager Nav
+
+<div style="max-width:340px;margin:80px auto" class="panel">
+    <h1>Вход для преподавателя</h1>
+    <form @onsubmit="Submit" class="col">
+        <div class="field"><label>Логин</label><input @bind="_login" autocomplete="username" /></div>
+        <div class="field"><label>Пароль</label><input type="password" @bind="_password" autocomplete="current-password" /></div>
+        <ErrorBox Message="@_error" />
+        <button class="primary" type="submit" disabled="@_busy">Войти</button>
+    </form>
+    <p class="muted" style="margin-top:16px">Студенты работают через Telegram-бота. Для теста — <a href="bot">эмулятор бота</a>.</p>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+
+    private string _login = "";
+    private string _password = "";
+    private string? _error;
+    private bool _busy;
+
+    private async Task Submit()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var r = await Api.Post<LoginResponse>("api/auth/login", new LoginRequest(_login, _password));
+            await Session.SetAsync(r.Token);
+            Session.Me = await Api.Get<MeResponse>("api/me");
+            Nav.NavigateTo(r.MustChangePassword ? "change-password" : string.IsNullOrEmpty(ReturnUrl) ? "courses" : ReturnUrl);
+        }
+        catch (ApiError e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

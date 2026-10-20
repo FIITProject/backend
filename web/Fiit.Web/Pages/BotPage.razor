@@ -1,0 +1,176 @@
+@page "/bot"
+@implements IDisposable
+@inject BotEmulator Bot
+@inject BotApi BotApi
+@inject IJSRuntime JS
+
+<h1>Эмулятор Telegram-бота</h1>
+<p class="muted">
+    Работает с теми же <span class="mono">/api/bot/*</span>, что и настоящий бот: анкета, «Мои задания», сдача PDF, уведомления.
+    Студенты живут только в этой вкладке; при перезагрузке их Telegram-аккаунты можно восстановить по ID.
+</p>
+
+<div class="emulator">
+    <div class="chats">
+        <div class="panel">
+            <div class="field"><label>Ключ бота (X-Bot-Key)</label><input @bind="BotApi.Key" /></div>
+            <label style="display:block;margin-top:8px"><input type="checkbox" @bind="_autoPoll" @bind:after="TogglePoll" /> Забирать уведомления каждые 3 с</label>
+            <button class="small" style="margin-top:8px" @onclick="PollOnce">Забрать уведомления</button>
+            <div class="muted">@_pollState</div>
+        </div>
+        <button class="primary" style="width:100%;margin-bottom:8px" @onclick="() => Bot.NewStudent()">+ Новый студент</button>
+        <div class="row" style="margin-bottom:8px">
+            <input @bind="_restoreId" placeholder="Telegram ID" style="width:140px" />
+            <button class="small" @onclick="Restore">Открыть</button>
+        </div>
+        @foreach (var c in Bot.Chats)
+        {
+            <div class="chat-item @(c == Bot.Current ? "on" : "")" @onclick="() => Bot.Current = c">
+                <div>@c.Title</div>
+                <div class="muted mono">@c.TelegramUserId · @@@c.Username</div>
+            </div>
+        }
+    </div>
+
+    @if (Bot.Current is { } chat)
+    {
+        <div class="chat">
+            <div class="log" @ref="_log">
+                @if (chat.Messages.Count == 0)
+                {
+                    <div class="muted">Начните с /start и кода приглашения (страница «Приглашения»), или просто /start.</div>
+                }
+                @foreach (var m in chat.Messages)
+                {
+                    <div class="msg @(m.FromBot ? "bot" : "me")">
+                        @m.Text
+                        @if (m.FileNotificationId is { } fid)
+                        {
+                            <div class="buttons"><button @onclick="() => DownloadFile(fid, m.FileName)">📄 @(m.FileName ?? "файл.pdf")</button></div>
+                        }
+                        @if (m.Buttons.Count > 0)
+                        {
+                            <div class="buttons">
+                                @foreach (var b in m.Buttons)
+                                {
+                                    <button @onclick="b.Action">@b.Text</button>
+                                }
+                            </div>
+                        }
+                        <div class="time">@m.At.ToString("HH:mm:ss")</div>
+                    </div>
+                }
+            </div>
+            <div class="input">
+                <input @bind="_code" placeholder="код приглашения" style="width:150px" />
+                <button @onclick="() => Bot.Start(chat, _code)">/start</button>
+                <button @onclick='() => Bot.Text(chat, "/tasks")'>/tasks</button>
+                <input type="text" @bind="_text" @bind:event="oninput" @onkeydown="Key" placeholder="Сообщение…" />
+                <button class="primary" @onclick="SendText">Отправить</button>
+                <label class="btn" title="Прислать файл">
+                    📎 PDF
+                    <InputFile OnChange="Upload" accept="application/pdf,.pdf" style="display:none" />
+                </label>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="chat"><div class="log"><div class="muted">Создайте студента слева.</div></div></div>
+    }
+</div>
+
+@code {
+    private ElementReference _log;
+    private string _text = "", _code = "", _restoreId = "";
+    private bool _autoPoll = true;
+    private string? _pollState;
+    private Timer? _timer;
+    private int _lastCount;
+
+    protected override void OnInitialized()
+    {
+        Bot.Changed += OnChanged;
+        TogglePoll();
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var count = Bot.Current?.Messages.Count ?? 0;
+        if (count != _lastCount)
+        {
+            _lastCount = count;
+            await JS.InvokeVoidAsync("fiit.scrollToBottom", _log);
+        }
+    }
+
+    private void TogglePoll()
+    {
+        _timer?.Dispose();
+        _timer = _autoPoll ? new Timer(_ => InvokeAsync(PollOnce), null, 500, 3000) : null;
+    }
+
+    private async Task PollOnce()
+    {
+        try
+        {
+            var n = await Bot.Poll();
+            _pollState = $"Проверено {DateTime.Now:HH:mm:ss}" + (n > 0 ? $", получено {n}" : "");
+        }
+        catch (ApiError e)
+        {
+            _pollState = e.Message;
+        }
+        catch (HttpRequestException e)
+        {
+            _pollState = $"Сервер недоступен: {e.Message}";
+        }
+        StateHasChanged();
+    }
+
+    private void Restore()
+    {
+        if (long.TryParse(_restoreId.Trim(), out var id))
+            Bot.NewStudent(id);
+    }
+
+    private async Task SendText()
+    {
+        if (Bot.Current is null || string.IsNullOrWhiteSpace(_text))
+            return;
+        var text = _text;
+        _text = "";
+        await Bot.Text(Bot.Current, text);
+    }
+
+    private async Task Key(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await SendText();
+    }
+
+    private async Task Upload(InputFileChangeEventArgs e)
+    {
+        if (Bot.Current is null)
+            return;
+        var file = e.File;
+        using var stream = file.OpenReadStream(maxAllowedSize: 25 * 1024 * 1024);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        await Bot.File(Bot.Current, ms.ToArray(), file.Name);
+    }
+
+    private async Task DownloadFile(int notificationId, string? name)
+    {
+        var bytes = await Bot.DownloadFile(notificationId);
+        await JS.InvokeVoidAsync("fiit.saveFile", name ?? "проверка.pdf", "application/pdf", bytes);
+    }
+
+    public void Dispose()
+    {
+        Bot.Changed -= OnChanged;
+        _timer?.Dispose();
+    }
+}

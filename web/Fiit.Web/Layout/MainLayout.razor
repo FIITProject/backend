@@ -1,0 +1,93 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject Session Session
+@inject Api Api
+@inject NavigationManager Nav
+
+@if (!_ready)
+{
+    <div class="loading">Загрузка…</div>
+}
+else if (IsPublicPage)
+{
+    @Body
+}
+else
+{
+    <nav class="topbar">
+        <span class="brand">ФИИТ · ДЗ</span>
+        <NavLink href="courses">Курсы</NavLink>
+        <NavLink href="invites">Приглашения</NavLink>
+        <NavLink href="students">Студенты</NavLink>
+        <NavLink href="homeworks">ДЗ</NavLink>
+        <NavLink href="gradebook">Таблица</NavLink>
+        <NavLink href="teachers">Преподаватели</NavLink>
+        <NavLink href="bot">Бот (эмулятор)</NavLink>
+        <span class="spacer"></span>
+        <span class="user">@Session.Me?.FullName</span>
+        <NavLink href="change-password">Пароль</NavLink>
+        <a href="" @onclick="Logout" @onclick:preventDefault>Выйти</a>
+    </nav>
+    <main class="@(Wide ? "wide" : "")">@Body</main>
+}
+
+@code {
+    private bool _ready;
+
+    private string Path => Nav.ToBaseRelativePath(Nav.Uri).Split('?')[0];
+    private bool IsPublicPage => Path is "login";
+    private bool Wide => Path.StartsWith("review") || Path.StartsWith("gradebook") || Path.StartsWith("bot");
+
+    protected override async Task OnInitializedAsync()
+    {
+        Session.Changed += StateHasChanged;
+        Nav.LocationChanged += OnLocationChanged;
+        await EnsureSessionAsync();
+        _ready = true;
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        await EnsureSessionAsync();
+        StateHasChanged();
+    }
+
+    /// <summary>Без токена — на вход; с временным паролем — на смену пароля (П-1.4).</summary>
+    private async Task EnsureSessionAsync()
+    {
+        if (IsPublicPage || Path == "bot")
+            return;
+        if (!Session.IsLoggedIn)
+        {
+            Nav.NavigateTo($"login?returnUrl={Uri.EscapeDataString(Path)}");
+            return;
+        }
+        if (Session.Me is null)
+        {
+            try
+            {
+                Session.Me = await Api.Get<MeResponse>("api/me");
+            }
+            catch (ApiError)
+            {
+                return;
+            }
+        }
+        if (Session.Me.MustChangePassword && Path != "change-password")
+            Nav.NavigateTo("change-password");
+        else if (Path == "")
+            Nav.NavigateTo("courses");
+    }
+
+    private async Task Logout()
+    {
+        await Session.ClearAsync();
+        Nav.NavigateTo("login");
+    }
+
+    public void Dispose()
+    {
+        Session.Changed -= StateHasChanged;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

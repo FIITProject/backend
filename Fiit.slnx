@@ -6,4 +6,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Fiit.Api.Tests/Fiit.Api.Tests.csproj" />
   </Folder>
+  <Folder Name="/web/">
+    <Project Path="web/Fiit.Web/Fiit.Web.csproj" />
+  </Folder>
 </Solution>

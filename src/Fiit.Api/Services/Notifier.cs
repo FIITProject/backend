@@ -10,7 +10,7 @@ public class Notifier(AppDbContext db, TimeProvider time)
 {
     public void ApplicationApproved(int studentId, Course course) =>
         Add(studentId, NotificationKind.ApplicationApproved,
-            $"Вас добавили: {course.Subject.Name}, {CourseName(course)}, преподаватель {ShortName(course.AdminTeacher.FullName)}. Теперь вам доступны задания");
+            $"Вас добавили: {course.Subject.Name}, {CourseName(course)}, преподаватель {Sentence(ShortName(course.AdminTeacher.FullName))} Теперь вам доступны задания");
 
     public void ApplicationRejected(int studentId, Course course, string? reason) =>
         Add(studentId, NotificationKind.ApplicationRejected,
@@ -54,6 +54,9 @@ public class Notifier(AppDbContext db, TimeProvider time)
             AvailableAt = now,
         });
     }
+
+    /// <summary>Точка в конце, если её ещё нет («Иванов И. И.» уже заканчивается точкой).</summary>
+    private static string Sentence(string s) => s.EndsWith('.') ? s : s + ".";
 
     public static string CourseName(Course c) => Subgroup.FullName(c.Subgroup.Group.Name, c.Subgroup.Number);
 

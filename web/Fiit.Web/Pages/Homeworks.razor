@@ -1,0 +1,60 @@
+@page "/homeworks"
+@inject Api Api
+@inject Prefs Prefs
+@inject NavigationManager Nav
+
+<h1>Домашние задания</h1>
+
+<SubjectSemesterPicker OnChange="Load">
+    <div class="field"><label>&nbsp;</label><button class="primary" @onclick='() => Nav.NavigateTo("homeworks/new")' disabled="@(Prefs.SubjectId is null)">Новое ДЗ</button></div>
+</SubjectSemesterPicker>
+<ErrorBox Message="@_error" />
+
+<table style="margin-top:12px">
+    <thead><tr><th>Название</th><th>Дедлайн</th><th>Курсы</th><th>Статус</th><th>Сдано</th><th>Проверено</th><th>Автор</th></tr></thead>
+    <tbody>
+        @foreach (var h in _items)
+        {
+            <tr>
+                <td><a href="homeworks/@h.Id">@h.Title</a> @if (h.IsReadOnly) { <span class="badge">архив</span> }</td>
+                <td>@Fmt.Dt(h.Deadline)</td>
+                <td>@string.Join(", ", h.Courses.Select(c => c.Name))</td>
+                <td><span class="badge @(h.IsPublished ? "ok" : "warn")">@(h.IsPublished ? "опубликовано" : "черновик")</span></td>
+                <td>@h.SubmittedCount из @h.RecipientsCount</td>
+                <td>@h.ReviewedCount из @h.SubmittedCount</td>
+                <td>@h.AuthorName</td>
+            </tr>
+        }
+    </tbody>
+</table>
+@if (_items.Length == 0 && Prefs.SubjectId is not null)
+{
+    <p class="muted">ДЗ пока нет.</p>
+}
+@if (Prefs.SubjectId is null)
+{
+    <p class="muted">Сначала создайте курс на странице «Курсы».</p>
+}
+
+@code {
+    private HomeworkDto[] _items = [];
+    private string? _error;
+
+    private async Task Load()
+    {
+        _error = null;
+        if (Prefs.SubjectId is not { } subjectId || Prefs.Semester is not { } sem)
+        {
+            _items = [];
+            return;
+        }
+        try
+        {
+            _items = await Api.Get<HomeworkDto[]>($"api/homeworks?subjectId={subjectId}&semesterYear={sem.Year}&semesterTerm={sem.Term}");
+        }
+        catch (ApiError e)
+        {
+            _error = e.Message;
+        }
+    }
+}

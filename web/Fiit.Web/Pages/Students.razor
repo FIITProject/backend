@@ -1,0 +1,237 @@
+@page "/students"
+@inject Api Api
+
+<h1>Студенты и заявки</h1>
+
+<div class="row" style="margin-bottom:12px">
+    <div class="field">
+        <label>Курс</label>
+        <select @bind="_courseId" @bind:after="Load">
+            <option value="0">Все мои курсы</option>
+            @foreach (var c in _courses)
+            {
+                <option value="@c.Id">@c.SubjectName · @c.SubgroupName · @c.Semester @(c.IsArchived ? "(архив)" : "")</option>
+            }
+        </select>
+    </div>
+    <div class="field">
+        <label>Статус</label>
+        <select @bind="_status" @bind:after="Load">
+            <option value="">Ожидают и подтверждённые</option>
+            <option value="Pending">Ожидают подтверждения</option>
+            <option value="Approved">Подтверждённые</option>
+            <option value="Rejected">Отклонённые</option>
+        </select>
+    </div>
+    <div class="field">
+        <label>Метка</label>
+        <select @bind="_tagId" @bind:after="Load">
+            <option value="0">Любая</option>
+            @foreach (var t in _tags)
+            {
+                <option value="@t.Id">@t.Name</option>
+            }
+        </select>
+    </div>
+    <div class="field"><label>Фамилия</label><input @bind="_q" @bind:event="oninput" @bind:after="Load" placeholder="Поиск" /></div>
+</div>
+
+<div class="panel">
+    <div class="row">
+        <span class="muted">Выбрано: @_selected.Count</span>
+        <button class="primary" @onclick="ApproveSelected" disabled="@(SelectedPending.Length == 0)">Подтвердить выбранные</button>
+        <button @onclick="ApproveAll" disabled="@(_rows.All(r => r.Status != EnrollmentStatus.Pending))">Подтвердить все ожидающие в фильтре</button>
+        <input @bind="_reason" placeholder="Причина отклонения (необязательно)" style="width:260px" />
+        <button class="danger" @onclick="RejectSelected" disabled="@(SelectedPending.Length == 0)">Отклонить</button>
+        <span style="flex:1"></span>
+        <select @bind="_tagAction">
+            <option value="0">— метка —</option>
+            @foreach (var t in _tags)
+            {
+                <option value="@t.Id">@t.Name</option>
+            }
+        </select>
+        <button @onclick="() => TagSelected(true)" disabled="@(_tagAction == 0 || _selected.Count == 0)">Повесить</button>
+        <button @onclick="() => TagSelected(false)" disabled="@(_tagAction == 0 || _selected.Count == 0)">Снять</button>
+    </div>
+    <ErrorBox Message="@_error" />
+    @if (_confirmRemove is { } r)
+    {
+        <div class="error">
+            Удалить @r.LastName @r.FirstName из @r.CourseName по @r.SubjectName? Сдачи и проверки сохранятся.
+            <button class="small danger" @onclick="Remove">Удалить</button>
+            <button class="small" @onclick="() => _confirmRemove = null">Отмена</button>
+        </div>
+    }
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th><input type="checkbox" checked="@(_rows.Length > 0 && _selected.Count == _rows.Length)" @onchange="ToggleAll" /></th>
+            <th>Фамилия</th><th>Имя</th><th>Предмет</th><th>Подгруппа</th><th>Telegram</th><th>Статус</th><th>Дата заявки</th><th>Метки</th><th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var e in _rows)
+        {
+            <tr class="@(_selected.Contains(e.Id) ? "selected" : "")">
+                <td><input type="checkbox" checked="@_selected.Contains(e.Id)" @onchange="() => Toggle(e.Id)" /></td>
+                <td>@e.LastName</td>
+                <td>@e.FirstName</td>
+                <td>@e.SubjectName</td>
+                <td>@e.CourseName</td>
+                <td>@(e.TelegramUsername is null ? "—" : "@" + e.TelegramUsername) @if (e.BotBlocked) { <span class="badge bad">бот заблокирован</span> }</td>
+                <td>
+                    <span class="badge @(e.Status switch { EnrollmentStatus.Approved => "ok", EnrollmentStatus.Pending => "warn", _ => "bad" })">@Fmt.Status(e.Status)</span>
+                    @if (e.RejectReason is not null) { <div class="muted">@e.RejectReason</div> }
+                </td>
+                <td>@Fmt.Dt(e.CreatedAt)</td>
+                <td>@foreach (var t in e.Tags) { <span class="badge">@t.Name</span> }</td>
+                <td>
+                    @if (e.Status == EnrollmentStatus.Approved)
+                    {
+                        <button class="small danger" @onclick="() => _confirmRemove = e">Удалить</button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+@if (_rows.Length == 0)
+{
+    <p class="muted">Никого нет. Создайте приглашение и отправьте ссылку студентам.</p>
+}
+
+<div class="panel" style="margin-top:16px">
+    <h2 style="margin-top:0">Мои метки</h2>
+    <p class="muted">Метки личные — их видите только вы. По меткам можно выдавать ДЗ и фильтровать таблицу.</p>
+    @foreach (var t in _tags)
+    {
+        <div class="row" style="margin-bottom:4px">
+            @if (_renaming == t.Id)
+            {
+                <input @bind="_renameValue" />
+                <button class="small" @onclick="() => Rename(t)">OK</button>
+            }
+            else
+            {
+                <span class="badge">@t.Name</span> <span class="muted">@t.StudentsCount студ.</span>
+                <button class="small" @onclick="() => { _renaming = t.Id; _renameValue = t.Name; }">Переименовать</button>
+                <button class="small danger" @onclick="() => DeleteTag(t)">Удалить</button>
+            }
+        </div>
+    }
+    <div class="row" style="margin-top:8px">
+        <input @bind="_newTag" placeholder="Новая метка" />
+        <button @onclick="CreateTag" disabled="@string.IsNullOrWhiteSpace(_newTag)">Создать</button>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "course")] public int? CourseParam { get; set; }
+    [SupplyParameterFromQuery(Name = "status")] public string? StatusParam { get; set; }
+
+    private CourseDto[] _courses = [];
+    private TagDto[] _tags = [];
+    private EnrollmentDto[] _rows = [];
+    private readonly HashSet<int> _selected = [];
+    private int _courseId, _tagId, _tagAction;
+    private string _status = "", _q = "", _reason = "", _newTag = "";
+    private string? _error, _renameValue;
+    private int? _renaming;
+    private EnrollmentDto? _confirmRemove;
+
+    private int[] SelectedPending => _rows.Where(r => _selected.Contains(r.Id) && r.Status == EnrollmentStatus.Pending).Select(r => r.Id).ToArray();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _courseId = CourseParam ?? 0;
+        _status = StatusParam ?? "";
+        _courses = (await Api.Get<CourseDto[]>("api/courses")).Concat(await Api.Get<CourseDto[]>("api/courses?archived=true")).ToArray();
+        _tags = await Api.Get<TagDto[]>("api/tags");
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        var query = new List<string>();
+        if (_courseId != 0) query.Add($"courseIds={_courseId}");
+        if (_status != "") query.Add($"status={_status}");
+        if (_tagId != 0) query.Add($"tagId={_tagId}");
+        if (!string.IsNullOrWhiteSpace(_q)) query.Add($"q={Uri.EscapeDataString(_q)}");
+        _rows = await Api.Get<EnrollmentDto[]>("api/enrollments?" + string.Join('&', query));
+        _selected.IntersectWith(_rows.Select(r => r.Id));
+    }
+
+    private void Toggle(int id)
+    {
+        if (!_selected.Remove(id))
+            _selected.Add(id);
+    }
+
+    private void ToggleAll(ChangeEventArgs e)
+    {
+        _selected.Clear();
+        if (e.Value is true)
+            _selected.UnionWith(_rows.Select(r => r.Id));
+    }
+
+    private Task ApproveSelected() => Run(() => Api.Post<int>("api/enrollments/approve", new IdsRequest(SelectedPending)));
+
+    private Task ApproveAll() => Run(() => Api.Post<int>("api/enrollments/approve",
+        new IdsRequest(_rows.Where(r => r.Status == EnrollmentStatus.Pending).Select(r => r.Id).ToArray())));
+
+    private Task RejectSelected() => Run(async () =>
+    {
+        await Api.Post<int>("api/enrollments/reject", new RejectRequest(SelectedPending, _reason));
+        _reason = "";
+    });
+
+    private Task Remove() => Run(async () =>
+    {
+        await Api.Delete($"api/enrollments/{_confirmRemove!.Id}");
+        _confirmRemove = null;
+    });
+
+    private Task TagSelected(bool assign) => Run(async () =>
+    {
+        var students = _rows.Where(r => _selected.Contains(r.Id)).Select(r => r.StudentId).Distinct().ToArray();
+        await Api.Post($"api/tags/{_tagAction}/students{(assign ? "" : "/remove")}", new TagStudentsRequest(students));
+        _tags = await Api.Get<TagDto[]>("api/tags");
+    });
+
+    private Task CreateTag() => Run(async () =>
+    {
+        await Api.Post<TagDto>("api/tags", new TagNameRequest(_newTag));
+        _newTag = "";
+        _tags = await Api.Get<TagDto[]>("api/tags");
+    });
+
+    private Task Rename(TagDto t) => Run(async () =>
+    {
+        await Api.Put<object?>($"api/tags/{t.Id}", new TagNameRequest(_renameValue ?? ""));
+        _renaming = null;
+        _tags = await Api.Get<TagDto[]>("api/tags");
+    });
+
+    private Task DeleteTag(TagDto t) => Run(async () =>
+    {
+        await Api.Delete($"api/tags/{t.Id}");
+        _tags = await Api.Get<TagDto[]>("api/tags");
+    });
+
+    private async Task Run(Func<Task> action)
+    {
+        _error = null;
+        try
+        {
+            await action();
+            await Load();
+        }
+        catch (ApiError e)
+        {
+            _error = e.Message;
+        }
+    }
+}
