@@ -110,16 +110,27 @@ else
                 </div>
                 <div class="muted" style="margin-top:8px">@_saveState</div>
                 <ErrorBox Message="@_error" />
+                @if (_conflict)
+                {
+                    <button class="small" @onclick="Reload">Обновить проверку</button>
+                }
                 @if (!IsReadOnly)
                 {
                     <button class="primary" style="margin-top:8px;width:100%" @onclick="Send" disabled="@_sending">
                         @(_sub?.Review?.SentAt is null ? "Отправить студенту" : "Отправить обновлённую проверку")
                     </button>
                 }
-                @if (_sub?.Review is { SentAt: not null } r)
+                @if (_sub?.Review is { } rv)
                 {
-                    <p class="muted">Отправлено @Fmt.Dt(r.SentAt)@(r.HasUnsentChanges ? " · есть неотправленные правки" : "")</p>
+                    <p class="muted">
+                        Черновик последним правил(а): @rv.UpdatedByName
+                        @if (rv.SentAt is not null)
+                        {
+                            <br />@($"Отправил(а) {rv.SentByName} {Fmt.Dt(rv.SentAt)}")@(rv.HasUnsentChanges ? " · есть неотправленные правки" : "")
+                        }
+                    </p>
                 }
+                <p class="muted">Проверять может любой преподаватель курса; студент видит подпись того, кто отправил.</p>
             </div>
 
             @if (Prefs.LastGradebook is not null)
@@ -151,7 +162,7 @@ else
     private string? _comment, _error, _saveState;
     private decimal? _override;
     private Dictionary<int, decimal?> _scores = [];
-    private bool _sending, _pendingRender;
+    private bool _sending, _pendingRender, _conflict;
     private CancellationTokenSource? _debounce;
 
     private bool IsReadOnly => _ctx?.IsReadOnly != false || _sub is not { IsLatest: true };
@@ -194,6 +205,19 @@ else
         _override = r?.TotalOverride;
         _scores = _ctx!.Subtasks.ToDictionary(st => st.Id!.Value, st => r?.SubtaskScores.FirstOrDefault(x => x.SubtaskId == st.Id)?.Score);
         _saveState = r is null ? "Черновика ещё нет" : $"Сохранено {Fmt.Dt(r.UpdatedAt)}";
+    }
+
+    /// <summary>Черновик поменял коллега — перечитываем проверку (наши несохранённые правки теряются).</summary>
+    private async Task Reload()
+    {
+        _debounce?.Cancel();
+        _debounce = null;
+        _conflict = false;
+        var version = _sub?.Version;
+        _ctx = await Api.Get<ReviewContextDto>($"api/homeworks/{HomeworkId}/students/{StudentId}/review");
+        SelectFields(_ctx.Submissions.FirstOrDefault(s => s.Version == version) ?? _ctx.Submissions.LastOrDefault());
+        _error = null;
+        _pendingRender = true;
     }
 
     private async Task SelectVersion(SubmissionDto s)
@@ -291,15 +315,17 @@ else
         try
         {
             var review = await Api.Put<ReviewDto>($"api/submissions/{_sub.Id}/review", new SaveReviewRequest(_annotations, _comment,
-                _scores.Select(kv => new SubtaskScoreDto(kv.Key, kv.Value)).ToArray(), _override));
+                _scores.Select(kv => new SubtaskScoreDto(kv.Key, kv.Value)).ToArray(), _override, _sub.Review?.UpdatedAt));
             UpdateReview(review);
             _saveState = $"Сохранено {Fmt.Dt(review.UpdatedAt)}";
             _error = null;
+            _conflict = false;
         }
         catch (ApiError e)
         {
             _saveState = "Не сохранено";
             _error = e.Message;
+            _conflict = e.Code == ErrorCodes.ReviewChangedByColleague;
         }
         StateHasChanged();
     }

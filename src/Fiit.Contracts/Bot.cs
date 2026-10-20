@@ -51,7 +51,8 @@ public record BotHomeworkDto(
 
 public record BotSubmissionDto(int Version, DateTimeOffset SubmittedAt, bool IsLate);
 
-public record BotReviewResultDto(int Version, decimal? Total, BotSubtaskResult[] Subtasks, string? Comment, DateTimeOffset SentAt);
+/// <summary>ReviewedBy — преподаватель, который отправил проверку.</summary>
+public record BotReviewResultDto(int Version, decimal? Total, BotSubtaskResult[] Subtasks, string? Comment, DateTimeOffset SentAt, string? ReviewedBy);
 
 public record BotSubtaskResult(string Title, decimal? Score, decimal? MaxScore);
 

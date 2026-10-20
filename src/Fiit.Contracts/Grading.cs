@@ -25,8 +25,8 @@ public record GradebookRow(
     GradebookCell[] Cells,
     decimal? Average);
 
-/// <summary>Score — оценка из отправленной студенту проверки последней версии.</summary>
-public record GradebookCell(int HomeworkId, CellStatus Status, decimal? Score, bool IsLate, int Versions, int? LatestSubmissionId);
+/// <summary>Score — оценка из отправленной студенту проверки последней версии; ReviewedBy — кто её отправил.</summary>
+public record GradebookCell(int HomeworkId, CellStatus Status, decimal? Score, bool IsLate, int Versions, int? LatestSubmissionId, string? ReviewedBy = null);
 
 public record ReviewContextDto(
     int HomeworkId,
@@ -51,7 +51,10 @@ public record SubmissionDto(
     bool IsLatest,
     ReviewDto? Review);
 
-/// <summary>Annotations — JSON-массив пометок в координатах страницы PDF (пункты, начало — левый верхний угол).</summary>
+/// <summary>
+/// Annotations — JSON-массив пометок в координатах страницы PDF (пункты, начало — левый верхний угол).
+/// UpdatedByName — кто последним правил черновик, SentByName — кто отправил студенту (подпись).
+/// </summary>
 public record ReviewDto(
     string Annotations,
     string? Comment,
@@ -61,8 +64,10 @@ public record ReviewDto(
     DateTimeOffset UpdatedAt,
     DateTimeOffset? SentAt,
     bool HasUnsentChanges,
-    string ReviewerName);
+    string UpdatedByName,
+    string? SentByName);
 
 public record SubtaskScoreDto(int SubtaskId, decimal? Score);
 
-public record SaveReviewRequest(string Annotations, string? Comment, SubtaskScoreDto[] SubtaskScores, decimal? TotalOverride);
+/// <summary>BaseUpdatedAt — UpdatedAt черновика, с которого начинали править; если черновик успел поменять коллега — 409.</summary>
+public record SaveReviewRequest(string Annotations, string? Comment, SubtaskScoreDto[] SubtaskScores, decimal? TotalOverride, DateTimeOffset? BaseUpdatedAt = null);

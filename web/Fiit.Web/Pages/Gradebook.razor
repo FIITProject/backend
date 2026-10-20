@@ -75,7 +75,7 @@
                         @foreach (var c in r.Cells)
                         {
                             var clickable = c.LatestSubmissionId is not null;
-                            <td class="cell cell-@c.Status @(clickable ? "clickable" : "")" @onclick="() => Open(r, c)">
+                            <td class="cell cell-@c.Status @(clickable ? "clickable" : "")" title="@(c.ReviewedBy is null ? null : $"Проверил(а): {c.ReviewedBy}")" @onclick="() => Open(r, c)">
                                 @if (c.Score is not null && c.Status is CellStatus.Reviewed or CellStatus.ReviewedWithUnsentChanges)
                                 {
                                     <div class="score">@Fmt.Score(c.Score)</div>

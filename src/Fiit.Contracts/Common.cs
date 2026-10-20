@@ -33,4 +33,5 @@ public static class ErrorCodes
     public const string FileTooLarge = "file_too_large";
     public const string NotEnrolled = "not_enrolled";
     public const string PasswordChangeRequired = "password_change_required";
+    public const string ReviewChangedByColleague = "review_changed";
 }

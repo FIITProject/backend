@@ -87,7 +87,7 @@
 | GET | `/gradebook/export.xlsx?...` | экспорт в Excel |
 | GET | `/homeworks/{hwId}/students/{studentId}/review` | экран проверки: версии, проверки, подзадачи |
 | GET | `/submissions/{id}/file`, `/submissions/{id}/reviewed-file` | оригинал / отправленный PDF с пометками |
-| PUT | `/submissions/{id}/review` | черновик `{annotations, comment, subtaskScores[], totalOverride?}` (только последняя версия) |
+| PUT | `/submissions/{id}/review` | черновик `{annotations, comment, subtaskScores[], totalOverride?, baseUpdatedAt?}` (только последняя версия) |
 | POST | `/submissions/{id}/review/send` | впечатать пометки и отправить студенту |
 
 ## Права

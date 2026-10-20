@@ -365,6 +365,8 @@ public class BotEmulator(BotApi api)
             lines.AddRange(r.Subtasks.Where(s => s.Score is not null).Select(s => $"  {s.Title}: {Fmt.Score(s.Score)}{(s.MaxScore is { } m ? $" из {Fmt.Score(m)}" : "")}"));
             if (!string.IsNullOrWhiteSpace(r.Comment))
                 lines.Add($"Комментарий: {r.Comment}");
+            if (r.ReviewedBy is not null)
+                lines.Add($"Проверил(а): {r.ReviewedBy}");
         }
         if (!hw.CanSubmit)
             lines.Add("Курс завершён, сдача закрыта");

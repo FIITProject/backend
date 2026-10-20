@@ -152,7 +152,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.SentSubtasks).HasColumnType("jsonb");
             e.Property(x => x.TotalOverride).HasPrecision(8, 2);
             e.Property(x => x.SentTotal).HasPrecision(8, 2);
-            e.HasOne(x => x.Teacher).WithMany().HasForeignKey(x => x.TeacherId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.UpdatedBy).WithMany().HasForeignKey(x => x.UpdatedById).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.SentBy).WithMany().HasForeignKey(x => x.SentById).OnDelete(DeleteBehavior.Restrict);
             e.Ignore(x => x.IsSent);
             e.Ignore(x => x.HasUnsentChanges);
         });

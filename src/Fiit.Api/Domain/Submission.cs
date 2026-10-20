@@ -19,13 +19,16 @@ public class Submission
 /// <summary>
 /// Проверка конкретной версии. Annotations — JSON слоя пометок в координатах страниц PDF.
 /// Черновик сохраняется автоматически; при отправке фиксируется снапшот того, что ушло студенту.
+/// За проверкой не закреплён преподаватель: править и отправлять может любой с доступом к курсу,
+/// подписывается тот, кто отправил (<see cref="SentById"/>).
 /// </summary>
 public class Review
 {
     public int Id { get; set; }
     public int SubmissionId { get; set; }
-    public int TeacherId { get; set; }
-    public Teacher Teacher { get; set; } = null!;
+    /// <summary>Кто последним правил черновик.</summary>
+    public int UpdatedById { get; set; }
+    public Teacher UpdatedBy { get; set; } = null!;
     public string Annotations { get; set; } = "[]";
     public string? Comment { get; set; }
     /// <summary>Итог, вписанный вручную. Если null — сумма <see cref="SubtaskScores"/>.</summary>
@@ -35,6 +38,9 @@ public class Review
     /// <summary>Хеш содержимого черновика; отличие от <see cref="SentHash"/> = «есть неотправленные правки».</summary>
     public string DraftHash { get; set; } = "";
     public DateTimeOffset? SentAt { get; set; }
+    /// <summary>Кто отправил проверку студенту — его подпись видит студент.</summary>
+    public int? SentById { get; set; }
+    public Teacher? SentBy { get; set; }
     public string? SentHash { get; set; }
     public decimal? SentTotal { get; set; }
     public string? SentComment { get; set; }

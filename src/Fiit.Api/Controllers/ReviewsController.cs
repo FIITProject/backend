@@ -21,7 +21,8 @@ public class ReviewsController(AppDbContext db, Access access, IFileStorage stor
         var (student, course) = await StudentInHomeworkAsync(hw, studentId, ct);
         var submissions = await db.Submissions
             .Include(s => s.Review).ThenInclude(r => r!.SubtaskScores)
-            .Include(s => s.Review).ThenInclude(r => r!.Teacher)
+            .Include(s => s.Review).ThenInclude(r => r!.UpdatedBy)
+            .Include(s => s.Review).ThenInclude(r => r!.SentBy)
             .Where(s => s.HomeworkId == homeworkId && s.StudentId == studentId)
             .OrderBy(s => s.Version)
             .AsSplitQuery()
@@ -79,9 +80,12 @@ public class ReviewsController(AppDbContext db, Access access, IFileStorage stor
         }
 
         var review = submission.Review;
+        // Проверять могут разные преподаватели; не даём молча затереть черновик, который параллельно правит коллега
+        if (review is not null && request.BaseUpdatedAt is { } baseline && review.UpdatedAt != baseline && review.UpdatedById != access.Me)
+            throw ApiException.Conflict($"Эту проверку только что изменил(а) {review.UpdatedBy.FullName} — обновите страницу", ErrorCodes.ReviewChangedByColleague);
         if (review is null)
         {
-            review = new Review { SubmissionId = submission.Id, TeacherId = access.Me };
+            review = new Review { SubmissionId = submission.Id, UpdatedById = access.Me };
             db.Reviews.Add(review);
             submission.Review = review;
         }
@@ -100,11 +104,11 @@ public class ReviewsController(AppDbContext db, Access access, IFileStorage stor
         review.Annotations = request.Annotations;
         review.Comment = comment;
         review.TotalOverride = request.TotalOverride;
-        review.TeacherId = access.Me;
-        review.UpdatedAt = time.GetUtcNow();
+        review.UpdatedById = access.Me;
+        review.UpdatedAt = TruncateToMicroseconds(time.GetUtcNow());
         review.DraftHash = Hash(review);
         await db.SaveChangesAsync(ct);
-        await db.Entry(review).Reference(r => r.Teacher).LoadAsync(ct);
+        await db.Entry(review).Reference(r => r.UpdatedBy).LoadAsync(ct);
         return ToDto(review, hw);
     }
 
@@ -135,6 +139,8 @@ public class ReviewsController(AppDbContext db, Access access, IFileStorage stor
             .Select(s => new BotSubtaskResult(s.Title, review.SubtaskScores.FirstOrDefault(x => x.SubtaskId == s.Id)?.Score, s.MaxScore))
             .ToArray();
         review.SentAt = time.GetUtcNow();
+        review.SentById = access.Me;
+        review.SentBy = await db.Teachers.SingleAsync(t => t.Id == access.Me, ct);
         review.SentHash = review.DraftHash;
         review.SentTotal = Grading.Total(review.TotalOverride, review.SubtaskScores.Select(s => s.Score));
         review.SentComment = review.Comment;
@@ -156,7 +162,8 @@ public class ReviewsController(AppDbContext db, Access access, IFileStorage stor
     {
         var submission = await db.Submissions
             .Include(s => s.Review).ThenInclude(r => r!.SubtaskScores)
-            .Include(s => s.Review).ThenInclude(r => r!.Teacher)
+            .Include(s => s.Review).ThenInclude(r => r!.UpdatedBy)
+            .Include(s => s.Review).ThenInclude(r => r!.SentBy)
             .FirstOrDefaultAsync(s => s.Id == id, ct) ?? throw ApiException.NotFound("Сдача не найдена");
         var hw = await access.HomeworkAsync(submission.HomeworkId, ct);
         var (_, course) = await StudentInHomeworkAsync(hw, submission.StudentId, ct);
@@ -196,5 +203,8 @@ public class ReviewsController(AppDbContext db, Access access, IFileStorage stor
         r.SubtaskScores.Select(s => new SubtaskScoreDto(s.SubtaskId, s.Score)).ToArray(),
         r.TotalOverride,
         Grading.Total(r.TotalOverride, r.SubtaskScores.Where(s => hw.Subtasks.Any(x => x.Id == s.SubtaskId)).Select(s => s.Score)),
-        r.UpdatedAt, r.SentAt, r.HasUnsentChanges, r.Teacher?.FullName ?? "");
+        r.UpdatedAt, r.SentAt, r.HasUnsentChanges, r.UpdatedBy?.FullName ?? "", r.SentBy?.FullName);
+
+    /// <summary>Postgres хранит время с точностью до микросекунд — иначе BaseUpdatedAt не совпадёт после чтения из БД.</summary>
+    private static DateTimeOffset TruncateToMicroseconds(DateTimeOffset t) => new(t.Ticks - t.Ticks % 10, t.Offset);
 }

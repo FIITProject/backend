@@ -35,6 +35,8 @@ public class Notifier(AppDbContext db, TimeProvider time)
             text.AppendLine($"  {s.Title}: {Display.Score(s.Score!.Value)}{(s.MaxScore is { } m ? $" из {Display.Score(m)}" : "")}");
         if (!string.IsNullOrWhiteSpace(review.SentComment))
             text.AppendLine($"Комментарий: {review.SentComment}");
+        if (review.SentBy is { } by)
+            text.AppendLine($"Проверил(а): {ShortName(by.FullName)}");
         Add(studentId, NotificationKind.ReviewSent, text.ToString().TrimEnd(), hw.Id, review.SentFileKey, $"{hw.Title} — проверка v{submission.Version}.pdf");
     }
 

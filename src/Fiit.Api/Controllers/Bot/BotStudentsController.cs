@@ -176,7 +176,7 @@ public class BotStudentsController(AppDbContext db, StudentFactsLoader factsLoad
     {
         var (student, facts) = await StudentAsync(telegramUserId, ct);
         var (hw, finished) = await VisibleOneAsync(facts, homeworkId, ct);
-        var submissions = await db.Submissions.AsNoTracking().Include(s => s.Review)
+        var submissions = await db.Submissions.AsNoTracking().Include(s => s.Review).ThenInclude(r => r!.SentBy)
             .Where(s => s.StudentId == student.Id && s.HomeworkId == homeworkId)
             .OrderBy(s => s.Version)
             .ToListAsync(ct);
@@ -185,7 +185,8 @@ public class BotStudentsController(AppDbContext db, StudentFactsLoader factsLoad
             ? null
             : new BotReviewResultDto(lastSent.Version, lastSent.Review!.SentTotal,
                 JsonSerializer.Deserialize<BotSubtaskResult[]>(lastSent.Review.SentSubtasks ?? "[]", JsonSerializerOptions.Web) ?? [],
-                lastSent.Review.SentComment, lastSent.Review.SentAt!.Value);
+                lastSent.Review.SentComment, lastSent.Review.SentAt!.Value,
+                lastSent.Review.SentBy is { } by ? Notifier.ShortName(by.FullName) : null);
 
         return new BotHomeworkDto(hw.Id, hw.Subject.Name, hw.Title, hw.Link, hw.Deadline, !finished,
             hw.Subtasks.OrderBy(s => s.Order).Select(s => new SubtaskDto(s.Id, s.Title, s.MaxScore)).ToArray(),

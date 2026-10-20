@@ -125,7 +125,8 @@ public class GradebookController(AppDbContext db, Access access, StudentFactsLoa
                 var status = Grading.Cell(assigned, hasSub ? info.Latest : null, h.Deadline, now);
                 var sentScore = hasSub && info.Latest.Review is { IsSent: true } r ? r.SentTotal : null;
                 var late = hasSub && Grading.IsLate(info.Latest.SubmittedAt, h.Deadline);
-                return new GradebookCell(h.Id, status, sentScore, late, hasSub ? info.Versions : 0, hasSub ? info.Latest.Id : null);
+                var reviewedBy = hasSub && info.Latest.Review?.SentBy is { } by ? Notifier.ShortName(by.FullName) : null;
+                return new GradebookCell(h.Id, status, sentScore, late, hasSub ? info.Versions : 0, hasSub ? info.Latest.Id : null, reviewedBy);
             }).ToArray();
             var average = Grading.Average(cells.Where(c => c.Status is CellStatus.Reviewed or CellStatus.ReviewedWithUnsentChanges).Select(c => c.Score));
             var course = courseById[e.CourseId];

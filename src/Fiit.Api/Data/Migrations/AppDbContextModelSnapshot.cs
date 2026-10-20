@@ -459,6 +459,10 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("sent_at");
 
+                    b.Property<int?>("SentById")
+                        .HasColumnType("integer")
+                        .HasColumnName("sent_by_id");
+
                     b.Property<string>("SentComment")
                         .HasColumnType("text")
                         .HasColumnName("sent_comment");
@@ -484,10 +488,6 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("submission_id");
 
-                    b.Property<int>("TeacherId")
-                        .HasColumnType("integer")
-                        .HasColumnName("teacher_id");
-
                     b.Property<decimal?>("TotalOverride")
                         .HasPrecision(8, 2)
                         .HasColumnType("numeric(8,2)")
@@ -497,15 +497,22 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<int>("UpdatedById")
+                        .HasColumnType("integer")
+                        .HasColumnName("updated_by_id");
+
                     b.HasKey("Id")
                         .HasName("pk_reviews");
+
+                    b.HasIndex("SentById")
+                        .HasDatabaseName("ix_reviews_sent_by_id");
 
                     b.HasIndex("SubmissionId")
                         .IsUnique()
                         .HasDatabaseName("ix_reviews_submission_id");
 
-                    b.HasIndex("TeacherId")
-                        .HasDatabaseName("ix_reviews_teacher_id");
+                    b.HasIndex("UpdatedById")
+                        .HasDatabaseName("ix_reviews_updated_by_id");
 
                     b.ToTable("reviews", (string)null);
                 });
@@ -1044,6 +1051,12 @@ namespace Fiit.Api.Data.Migrations
 
             modelBuilder.Entity("Fiit.Api.Domain.Review", b =>
                 {
+                    b.HasOne("Fiit.Api.Domain.Teacher", "SentBy")
+                        .WithMany()
+                        .HasForeignKey("SentById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_reviews_teachers_sent_by_id");
+
                     b.HasOne("Fiit.Api.Domain.Submission", null)
                         .WithOne("Review")
                         .HasForeignKey("Fiit.Api.Domain.Review", "SubmissionId")
@@ -1051,14 +1064,16 @@ namespace Fiit.Api.Data.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_reviews_submissions_submission_id");
 
-                    b.HasOne("Fiit.Api.Domain.Teacher", "Teacher")
+                    b.HasOne("Fiit.Api.Domain.Teacher", "UpdatedBy")
                         .WithMany()
-                        .HasForeignKey("TeacherId")
+                        .HasForeignKey("UpdatedById")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_reviews_teachers_teacher_id");
+                        .HasConstraintName("fk_reviews_teachers_updated_by_id");
 
-                    b.Navigation("Teacher");
+                    b.Navigation("SentBy");
+
+                    b.Navigation("UpdatedBy");
                 });
 
             modelBuilder.Entity("Fiit.Api.Domain.StudentTag", b =>

@@ -38,7 +38,7 @@ public class HomeworkStats(AppDbContext db, StudentFactsLoader facts)
     public async Task<Dictionary<(int HomeworkId, int StudentId), (Submission Latest, int Versions)>> LatestWithCountAsync(IReadOnlyCollection<int> homeworkIds, CancellationToken ct)
     {
         var all = await db.Submissions.AsNoTracking()
-            .Include(s => s.Review)
+            .Include(s => s.Review).ThenInclude(r => r!.SentBy)
             .Where(s => homeworkIds.Contains(s.HomeworkId))
             .ToListAsync(ct);
         return all.GroupBy(s => (s.HomeworkId, s.StudentId))
