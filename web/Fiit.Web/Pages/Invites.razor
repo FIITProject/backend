@@ -1,0 +1,173 @@
+@page "/invites"
+@inject Api Api
+@inject IJSRuntime JS
+
+<h1>Приглашения в бота</h1>
+<p class="muted">Ссылку публикуйте в чате курса со студентами. По ней студент заполняет анкету в боте, заявка появляется в разделе «Студенты».</p>
+
+<div class="panel">
+    <h2 style="margin-top:0">Новое приглашение</h2>
+    <div class="row">
+        <div class="field">
+            <label>Предмет и семестр</label>
+            <select @bind="_groupKey">
+                <option value="">— выберите —</option>
+                @foreach (var g in Groups)
+                {
+                    <option value="@g.Key">@g.Key</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label>Срок действия (необязательно)</label>
+            <input type="datetime-local" value="@_expires" @onchange="e => _expires = e.Value?.ToString()" />
+        </div>
+    </div>
+    @if (SelectedGroup is { } group)
+    {
+        <div class="field" style="margin-top:8px">
+            <label>Подгруппы</label>
+            <div class="row">
+                @foreach (var c in group)
+                {
+                    <label><input type="checkbox" checked="@_courseIds.Contains(c.Id)" @onchange="() => Toggle(c.Id)" /> @c.SubgroupName</label>
+                }
+            </div>
+        </div>
+    }
+    <div class="row" style="margin-top:8px">
+        <button class="primary" @onclick="Create" disabled="@(_courseIds.Count == 0)">Создать ссылку</button>
+    </div>
+    <ErrorBox Message="@_createError" />
+    @if (_created is not null)
+    {
+        <div class="success">
+            Ссылка: <span class="mono">@_created.Link</span>
+            <button class="small" @onclick="() => Copy(_created.Link)">Скопировать</button>
+            <div class="muted">Код для эмулятора бота: <span class="mono">@_created.Code</span></div>
+        </div>
+    }
+</div>
+
+<ErrorBox Message="@_error" />
+<table>
+    <thead><tr><th>Предмет</th><th>Подгруппы</th><th>Семестр</th><th>Срок</th><th>Статус</th><th>Заявок</th><th>Ссылка</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var i in _invites)
+        {
+            <tr>
+                <td>@i.SubjectName</td>
+                <td>@string.Join(", ", i.Courses.Select(c => c.Name))</td>
+                <td>@i.Semester</td>
+                <td>
+                    @if (_editing == i.Id)
+                    {
+                        <input type="datetime-local" value="@_editExpires" @onchange="e => _editExpires = e.Value?.ToString()" />
+                        <button class="small" @onclick="() => SaveExpiry(i)">OK</button>
+                    }
+                    else
+                    {
+                        @(i.ExpiresAt is null ? "бессрочно" : Fmt.Dt(i.ExpiresAt))
+                    }
+                </td>
+                <td><span class="badge @(i.Status == InviteStatus.Active ? "ok" : "bad")">@Fmt.Status(i.Status)</span></td>
+                <td>@i.ApplicationsCount</td>
+                <td><span class="mono">@i.Code</span> <button class="small" @onclick="() => Copy(i.Link)">Скопировать ссылку</button></td>
+                <td class="row">
+                    @if (i.Status != InviteStatus.Closed)
+                    {
+                        <button class="small" @onclick="() => StartEdit(i)">Срок</button>
+                        <button class="small danger" @onclick="() => Close(i)">Закрыть</button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+@if (_copied)
+{
+    <div class="success">Скопировано</div>
+}
+
+@code {
+    private CourseDto[] _courses = [];
+    private InviteDto[] _invites = [];
+    private readonly HashSet<int> _courseIds = [];
+    private string _groupKey = "";
+    private string? _expires;
+    private InviteDto? _created;
+    private string? _error, _createError;
+    private int? _editing;
+    private string? _editExpires;
+    private bool _copied;
+
+    private IEnumerable<IGrouping<string, CourseDto>> Groups => _courses.GroupBy(c => $"{c.SubjectName} · {c.Semester}");
+    private IGrouping<string, CourseDto>? SelectedGroup => Groups.FirstOrDefault(g => g.Key == _groupKey);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _courses = await Api.Get<CourseDto[]>("api/courses");
+        await Load();
+    }
+
+    private async Task Load() => _invites = await Api.Get<InviteDto[]>("api/invites");
+
+    private void Toggle(int id)
+    {
+        if (!_courseIds.Remove(id))
+            _courseIds.Add(id);
+    }
+
+    private async Task Create()
+    {
+        _createError = null;
+        try
+        {
+            var subjectId = _courses.First(c => _courseIds.Contains(c.Id)).SubjectId;
+            var ids = SelectedGroup?.Where(c => _courseIds.Contains(c.Id)).Select(c => c.Id).ToArray() ?? [];
+            _created = await Api.Post<InviteDto>("api/invites", new CreateInviteRequest(subjectId, ids, Fmt.FromInput(_expires)));
+            _courseIds.Clear();
+            await Load();
+        }
+        catch (ApiError e)
+        {
+            _createError = e.Message;
+        }
+    }
+
+    private void StartEdit(InviteDto i)
+    {
+        _editing = i.Id;
+        _editExpires = i.ExpiresAt is { } e ? Fmt.ToInput(e) : null;
+    }
+
+    private Task SaveExpiry(InviteDto i) => Run(async () =>
+    {
+        await Api.Patch<InviteDto>($"api/invites/{i.Id}", new UpdateInviteRequest(Fmt.FromInput(_editExpires), false));
+        _editing = null;
+    });
+
+    private Task Close(InviteDto i) => Run(() => Api.Patch<InviteDto>($"api/invites/{i.Id}", new UpdateInviteRequest(null, true)));
+
+    private async Task Copy(string text)
+    {
+        _copied = await JS.InvokeAsync<bool>("fiit.copy", text);
+        StateHasChanged();
+        await Task.Delay(1500);
+        _copied = false;
+    }
+
+    private async Task Run(Func<Task> action)
+    {
+        _error = null;
+        try
+        {
+            await action();
+            await Load();
+        }
+        catch (ApiError e)
+        {
+            _error = e.Message;
+        }
+    }
+}

@@ -1,0 +1,223 @@
+@page "/courses"
+@inject Api Api
+
+<h1>Курсы</h1>
+
+<div class="panel">
+    <h2 style="margin-top:0">Новый курс</h2>
+    <div class="row">
+        <div class="field">
+            <label>Предмет (выберите или введите новый)</label>
+            <input list="subjects" @bind="_subjectName" placeholder="Например, Тервер" />
+            <datalist id="subjects">
+                @foreach (var s in _subjects)
+                {
+                    <option value="@s.Name"></option>
+                }
+            </datalist>
+        </div>
+        <div class="field"><label>Группа</label><input @bind="_group" placeholder="ФИИТ-301 или ФИИТ-301-1" /></div>
+        <div class="field"><label>Подгруппа (необязательно)</label><input type="number" min="1" @bind="_subgroup" style="width:110px" /></div>
+        <div class="field">
+            <label>Семестр</label>
+            <select @bind="_semesterKey">
+                @foreach (var s in _semesters)
+                {
+                    <option value="@Fmt.Key(s)">@s</option>
+                }
+            </select>
+        </div>
+        <div class="field"><label>&nbsp;</label><button class="primary" @onclick="Create">Создать</button></div>
+    </div>
+    <ErrorBox Message="@_createError" />
+</div>
+
+<div class="row" style="margin-bottom:8px">
+    <label><input type="checkbox" @bind="_archived" @bind:after="Load" /> Показать архив</label>
+    <span class="spacer" style="flex:1"></span>
+    @if (_selected.Count > 0)
+    {
+        <span class="muted">Выбрано: @_selected.Count</span>
+        @if (_archived)
+        {
+            <button @onclick="Unarchive">Вернуть из архива</button>
+        }
+        else
+        {
+            <button @onclick="Archive">Отправить в архив</button>
+        }
+    }
+</div>
+<ErrorBox Message="@_error" />
+
+<table>
+    <thead>
+        <tr>
+            <th><input type="checkbox" checked="@(_courses.Length > 0 && _selected.Count == _courses.Length)" @onchange="ToggleAll" /></th>
+            <th>Предмет</th><th>Подгруппа</th><th>Семестр</th><th>Ведущий</th><th>Студентов</th><th>Ожидают</th><th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var c in _courses)
+        {
+            <tr class="@(_selected.Contains(c.Id) ? "selected" : "")">
+                <td><input type="checkbox" checked="@_selected.Contains(c.Id)" @onchange="() => Toggle(c.Id)" /></td>
+                <td>@c.SubjectName</td>
+                <td>@c.SubgroupName</td>
+                <td>@c.Semester</td>
+                <td>@c.AdminTeacherName @if (c.IsAdmin) { <span class="badge ok">вы</span> }</td>
+                <td>@c.ApprovedCount</td>
+                <td>@if (c.PendingCount > 0) { <a href="students?course=@c.Id&status=Pending">@c.PendingCount</a> } else { <span>0</span> }</td>
+                <td class="row">
+                    <a class="btn small" href="students?course=@c.Id">Студенты</a>
+                    @if (c.IsAdmin)
+                    {
+                        <button class="small" @onclick="() => OpenAccess(c)">Доступы</button>
+                        <button class="small danger" @onclick="() => Delete(c)">Удалить</button>
+                    }
+                </td>
+            </tr>
+            @if (_accessFor?.Id == c.Id)
+            {
+                <tr>
+                    <td></td>
+                    <td colspan="7">
+                        <div class="panel" style="margin:4px 0">
+                            <b>Доступ к курсу @c.SubjectName, @c.SubgroupName</b>
+                            <p class="muted">Преподаватель с доступом может всё, кроме управления доступами и удаления курса.</p>
+                            @if (_access.Length == 0)
+                            {
+                                <p class="muted">Доступ никому не выдан.</p>
+                            }
+                            @foreach (var a in _access)
+                            {
+                                <div class="row">@a.FullName <span class="muted">(@a.Login)</span> <button class="small danger" @onclick="() => Revoke(c, a.TeacherId)">Забрать</button></div>
+                            }
+                            <div class="row" style="margin-top:8px">
+                                <select @bind="_grantTo">
+                                    <option value="0">— преподаватель —</option>
+                                    @foreach (var t in _teachers.Where(t => !t.IsDisabled && t.Id != c.AdminTeacherId && _access.All(a => a.TeacherId != t.Id)))
+                                    {
+                                        <option value="@t.Id">@t.FullName (@t.Login)</option>
+                                    }
+                                </select>
+                                <button @onclick="() => Grant(c)" disabled="@(_grantTo == 0)">Выдать доступ</button>
+                                <button @onclick="() => _accessFor = null">Закрыть</button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+@if (_courses.Length == 0)
+{
+    <p class="muted">@(_archived ? "В архиве пусто." : "Курсов пока нет — создайте первый.")</p>
+}
+
+@code {
+    private CourseDto[] _courses = [];
+    private SubjectDto[] _subjects = [];
+    private SemesterDto[] _semesters = [];
+    private TeacherDto[] _teachers = [];
+    private readonly HashSet<int> _selected = [];
+    private bool _archived;
+    private string? _error, _createError;
+
+    private string _subjectName = "", _group = "", _semesterKey = "";
+    private int? _subgroup;
+
+    private CourseDto? _accessFor;
+    private CourseAccessDto[] _access = [];
+    private int _grantTo;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var current = await Api.Get<SemesterDto>("api/semesters/current");
+        _semesters = Fmt.SemesterOptions(current).ToArray();
+        _semesterKey = Fmt.Key(current);
+        _subjects = await Api.Get<SubjectDto[]>("api/subjects");
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        _selected.Clear();
+        _accessFor = null;
+        _courses = await Api.Get<CourseDto[]>($"api/courses?archived={_archived}");
+    }
+
+    private async Task Create()
+    {
+        _createError = null;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_subjectName))
+                throw new ApiError(System.Net.HttpStatusCode.BadRequest, "Укажите предмет", null);
+            var subject = await Api.Post<SubjectDto>("api/subjects", new CreateSubjectRequest(_subjectName));
+            await Api.Post<CourseDto>("api/courses", new CreateCourseRequest(subject.Id, _group, _subgroup, Fmt.ParseKey(_semesterKey)));
+            _group = "";
+            _subgroup = null;
+            _subjects = await Api.Get<SubjectDto[]>("api/subjects");
+            _archived = false;
+            await Load();
+        }
+        catch (ApiError e)
+        {
+            _createError = e.Message;
+        }
+    }
+
+    private void Toggle(int id)
+    {
+        if (!_selected.Remove(id))
+            _selected.Add(id);
+    }
+
+    private void ToggleAll(ChangeEventArgs e)
+    {
+        _selected.Clear();
+        if (e.Value is true)
+            _selected.UnionWith(_courses.Select(c => c.Id));
+    }
+
+    private Task Archive() => Run(() => Api.Post("api/courses/archive", new CourseIdsRequest(_selected.ToArray())));
+    private Task Unarchive() => Run(() => Api.Post("api/courses/unarchive", new CourseIdsRequest(_selected.ToArray())));
+    private Task Delete(CourseDto c) => Run(() => Api.Delete($"api/courses/{c.Id}"));
+
+    private async Task OpenAccess(CourseDto c)
+    {
+        _accessFor = c;
+        _grantTo = 0;
+        _teachers = await Api.Get<TeacherDto[]>("api/teachers");
+        _access = await Api.Get<CourseAccessDto[]>($"api/courses/{c.Id}/access");
+    }
+
+    private async Task Grant(CourseDto c)
+    {
+        await Run(() => Api.Post($"api/courses/{c.Id}/access/{_grantTo}"), reload: false);
+        await OpenAccess(c);
+    }
+
+    private async Task Revoke(CourseDto c, int teacherId)
+    {
+        await Run(() => Api.Delete($"api/courses/{c.Id}/access/{teacherId}"), reload: false);
+        await OpenAccess(c);
+    }
+
+    private async Task Run(Func<Task> action, bool reload = true)
+    {
+        _error = null;
+        try
+        {
+            await action();
+            if (reload)
+                await Load();
+        }
+        catch (ApiError e)
+        {
+            _error = e.Message;
+        }
+    }
+}

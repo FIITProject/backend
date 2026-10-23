@@ -1,0 +1,59 @@
+@inject Api Api
+@inject Prefs Prefs
+
+@* Выбор предмета и семестра — общий для ДЗ, студентов и сводной таблицы *@
+<div class="row">
+    <div class="field">
+        <label>Предмет</label>
+        <select value="@Prefs.SubjectId" @onchange="SubjectChanged">
+            <option value="">— выберите —</option>
+            @foreach (var s in _subjects)
+            {
+                <option value="@s.Id">@s.Name</option>
+            }
+        </select>
+    </div>
+    <div class="field">
+        <label>Семестр</label>
+        <select value="@(Prefs.Semester is { } sem ? Fmt.Key(sem) : "")" @onchange="SemesterChanged">
+            @foreach (var s in _semesters)
+            {
+                <option value="@Fmt.Key(s)">@s</option>
+            }
+        </select>
+    </div>
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public EventCallback OnChange { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private SubjectDto[] _subjects = [];
+    private SemesterDto[] _semesters = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var current = await Api.Get<SemesterDto>("api/semesters/current");
+        _semesters = Fmt.SemesterOptions(current).ToArray();
+        Prefs.Semester ??= current;
+        // Только предметы, по которым у препода есть курсы (в т.ч. архивные)
+        var courses = (await Api.Get<CourseDto[]>("api/courses")).Concat(await Api.Get<CourseDto[]>("api/courses?archived=true"));
+        _subjects = courses.Select(c => new SubjectDto(c.SubjectId, c.SubjectName)).DistinctBy(s => s.Id).OrderBy(s => s.Name).ToArray();
+        if (Prefs.SubjectId is null || _subjects.All(s => s.Id != Prefs.SubjectId))
+            Prefs.SubjectId = _subjects.FirstOrDefault()?.Id;
+        await OnChange.InvokeAsync();
+    }
+
+    private async Task SubjectChanged(ChangeEventArgs e)
+    {
+        Prefs.SubjectId = int.TryParse(e.Value?.ToString(), out var id) ? id : null;
+        await OnChange.InvokeAsync();
+    }
+
+    private async Task SemesterChanged(ChangeEventArgs e)
+    {
+        Prefs.Semester = Fmt.ParseKey(e.Value?.ToString()) ?? Prefs.Semester;
+        await OnChange.InvokeAsync();
+    }
+}

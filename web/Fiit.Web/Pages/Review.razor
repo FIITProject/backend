@@ -1,0 +1,411 @@
+@page "/review/{HomeworkId:int}/{StudentId:int}"
+@implements IAsyncDisposable
+@inject Api Api
+@inject Prefs Prefs
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@if (_ctx is null)
+{
+    <ErrorBox Message="@_error" />
+    <p class="muted">Загрузка…</p>
+}
+else
+{
+    <div class="review">
+        <div class="viewer">
+            <div class="toolbar">
+                <button class="@(_tool == "pen" ? "on" : "")" @onclick='() => Tool("pen")' disabled="@IsReadOnly">✎ Перо</button>
+                <button class="@(_tool == "marker" ? "on" : "")" @onclick='() => Tool("marker")' disabled="@IsReadOnly">▬ Маркер</button>
+                <button class="@(_tool == "text" ? "on" : "")" @onclick='() => Tool("text")' disabled="@IsReadOnly">T Текст</button>
+                <button class="@(_tool == "eraser" ? "on" : "")" @onclick='() => Tool("eraser")' disabled="@IsReadOnly">⌫ Ластик</button>
+                @foreach (var color in Colors)
+                {
+                    <button class="swatch @(_color == color ? "on" : "")" style="background:@color" @onclick="() => Color(color)" disabled="@IsReadOnly" title="@color"></button>
+                }
+                <select @bind="_width" @bind:after="ApplyTool" disabled="@IsReadOnly" title="Толщина">
+                    <option value="1">тонко</option>
+                    <option value="2">обычно</option>
+                    <option value="4">толсто</option>
+                </select>
+                <select @bind="_fontSize" @bind:after="ApplyTool" disabled="@IsReadOnly" title="Размер текста">
+                    <option value="10">10 pt</option>
+                    <option value="14">14 pt</option>
+                    <option value="18">18 pt</option>
+                    <option value="24">24 pt</option>
+                </select>
+                <button @onclick='() => Call("undo")' disabled="@IsReadOnly">Отменить</button>
+                <button @onclick='() => Call("redo")' disabled="@IsReadOnly">Повторить</button>
+                <span style="flex:1"></span>
+                <button @onclick='() => Call("zoom", 0.8)'>−</button>
+                <button @onclick='() => Call("zoom", 1.25)'>+</button>
+                <button @onclick='() => Call("fitWidth")'>По ширине</button>
+            </div>
+            <div class="pages" @ref="_pages"></div>
+        </div>
+
+        <div class="side">
+            <div class="panel">
+                <div><b>@_ctx.StudentName</b> <span class="muted">@_ctx.CourseName</span></div>
+                <div><a href="@_ctx.HomeworkLink" target="_blank">@_ctx.HomeworkTitle</a></div>
+                <div class="muted">Дедлайн: @Fmt.Dt(_ctx.Deadline)</div>
+                @if (_sub is not null)
+                {
+                    <div class="muted">Сдано: @Fmt.Dt(_sub.SubmittedAt)</div>
+                    @if (_sub.LateBy is { } late)
+                    {
+                        <div class="badge bad">сдано с опозданием на @Fmt.Duration(late)</div>
+                    }
+                }
+                @if (_ctx.IsReadOnly)
+                {
+                    <div class="badge">курс в архиве — только просмотр</div>
+                }
+            </div>
+
+            <div class="panel versions">
+                <span class="label">Версии</span>
+                <div class="row">
+                    @foreach (var s in _ctx.Submissions)
+                    {
+                        <button class="small @(s.Id == _sub?.Id ? "on" : "")" @onclick="() => SelectVersion(s)">v@(s.Version)</button>
+                    }
+                </div>
+                @if (_sub is { IsLatest: false })
+                {
+                    <p class="muted">Старая версия — только просмотр вместе со своими пометками.</p>
+                }
+                <button class="small" @onclick="Download" style="margin-top:8px">Скачать оригинал</button>
+                @if (_sub?.Review?.SentAt is not null)
+                {
+                    <button class="small" @onclick="DownloadReviewed" style="margin-top:8px">Скачать отправленный PDF</button>
+                }
+            </div>
+
+            <div class="panel">
+                @if (_ctx.Subtasks.Length > 0)
+                {
+                    <span class="label">Баллы по подзадачам</span>
+                    @foreach (var st in _ctx.Subtasks)
+                    {
+                        <div class="row" style="margin:4px 0">
+                            <span style="flex:1">@st.Title</span>
+                            <input type="number" step="0.25" min="0" max="@st.MaxScore" style="width:80px"
+                                   value="@Fmt.Score(_scores.GetValueOrDefault(st.Id!.Value))" @onchange="e => SetScore(st.Id!.Value, e.Value)" disabled="@IsReadOnly" />
+                            <span class="muted">@(st.MaxScore is { } m ? $"из {Fmt.Score(m)}" : "")</span>
+                        </div>
+                    }
+                }
+                <div class="row" style="margin-top:8px">
+                    <span class="label" style="flex:1">Итог</span>
+                    <input type="number" step="0.25" min="0" style="width:90px" value="@Fmt.Score(_override ?? Sum)" @onchange="SetOverride" disabled="@IsReadOnly" />
+                    @if (_override is not null && _ctx.Subtasks.Length > 0)
+                    {
+                        <button class="small" @onclick="ResetOverride" disabled="@IsReadOnly">Вернуть сумму</button>
+                    }
+                </div>
+                <div class="field" style="margin-top:8px">
+                    <label>Комментарий</label>
+                    <textarea rows="5" @bind="_comment" @bind:event="oninput" @bind:after="Changed" disabled="@IsReadOnly"></textarea>
+                </div>
+                <div class="muted" style="margin-top:8px">@_saveState</div>
+                <ErrorBox Message="@_error" />
+                @if (_conflict)
+                {
+                    <button class="small" @onclick="Reload">Обновить проверку</button>
+                }
+                @if (!IsReadOnly)
+                {
+                    <button class="primary" style="margin-top:8px;width:100%" @onclick="Send" disabled="@_sending">
+                        @(_sub?.Review?.SentAt is null ? "Отправить студенту" : "Отправить обновлённую проверку")
+                    </button>
+                }
+                @if (_sub?.Review is { } rv)
+                {
+                    <p class="muted">
+                        Черновик последним правил(а): @rv.UpdatedByName
+                        @if (rv.SentAt is not null)
+                        {
+                            <br />@($"Отправил(а) {rv.SentByName} {Fmt.Dt(rv.SentAt)}")@(rv.HasUnsentChanges ? " · есть неотправленные правки" : "")
+                        }
+                    </p>
+                }
+                <p class="muted">Проверять может любой преподаватель курса; студент видит подпись того, кто отправил.</p>
+            </div>
+
+            @if (Prefs.LastGradebook is not null)
+            {
+                <div class="row">
+                    <button @onclick="() => Next(false)">Следующий студент →</button>
+                    <button @onclick="() => Next(true)">Следующая непроверенная →</button>
+                </div>
+            }
+            <p><a href="gradebook">← К таблице</a></p>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int HomeworkId { get; set; }
+    [Parameter] public int StudentId { get; set; }
+
+    private static readonly string[] Colors = ["#d00000", "#1d4ed8", "#15803d", "#111827"];
+
+    private ReviewContextDto? _ctx;
+    private SubmissionDto? _sub;
+    private ElementReference _pages;
+    private IJSObjectReference? _js;
+    private DotNetObjectReference<Review>? _self;
+    private string _tool = "pen", _color = "#d00000";
+    private int _width = 2, _fontSize = 14;
+    private string _annotations = "[]";
+    private string? _comment, _error, _saveState;
+    private decimal? _override;
+    private Dictionary<int, decimal?> _scores = [];
+    private bool _sending, _pendingRender, _conflict;
+    private CancellationTokenSource? _debounce;
+
+    private bool IsReadOnly => _ctx?.IsReadOnly != false || _sub is not { IsLatest: true };
+    private decimal? Sum => _scores.Values.Any(v => v is not null) ? _scores.Values.Sum(v => v ?? 0) : null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _error = null;
+        try
+        {
+            await FlushAsync();
+            _ctx = await Api.Get<ReviewContextDto>($"api/homeworks/{HomeworkId}/students/{StudentId}/review");
+            SelectFields(_ctx.Submissions.LastOrDefault());
+            _pendingRender = true;
+        }
+        catch (ApiError e)
+        {
+            _error = e.Message;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_pendingRender || _ctx is null || _sub is null)
+            return;
+        _pendingRender = false;
+        _js ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/review.js");
+        _self ??= DotNetObjectReference.Create(this);
+        var bytes = await Api.Bytes($"api/submissions/{_sub.Id}/file");
+        await _js.InvokeAsync<int>("init", _pages, bytes, _annotations, IsReadOnly, _self);
+        await ApplyTool();
+    }
+
+    private void SelectFields(SubmissionDto? s)
+    {
+        _sub = s;
+        var r = s?.Review;
+        _annotations = r?.Annotations ?? "[]";
+        _comment = r?.Comment;
+        _override = r?.TotalOverride;
+        _scores = _ctx!.Subtasks.ToDictionary(st => st.Id!.Value, st => r?.SubtaskScores.FirstOrDefault(x => x.SubtaskId == st.Id)?.Score);
+        _saveState = r is null ? "Черновика ещё нет" : $"Сохранено {Fmt.Dt(r.UpdatedAt)}";
+    }
+
+    /// <summary>Черновик поменял коллега — перечитываем проверку (наши несохранённые правки теряются).</summary>
+    private async Task Reload()
+    {
+        _debounce?.Cancel();
+        _debounce = null;
+        _conflict = false;
+        var version = _sub?.Version;
+        _ctx = await Api.Get<ReviewContextDto>($"api/homeworks/{HomeworkId}/students/{StudentId}/review");
+        SelectFields(_ctx.Submissions.FirstOrDefault(s => s.Version == version) ?? _ctx.Submissions.LastOrDefault());
+        _error = null;
+        _pendingRender = true;
+    }
+
+    private async Task SelectVersion(SubmissionDto s)
+    {
+        await FlushAsync();
+        SelectFields(s);
+        _pendingRender = true;
+    }
+
+    private async Task Tool(string tool)
+    {
+        _tool = tool;
+        await ApplyTool();
+    }
+
+    private async Task Color(string color)
+    {
+        _color = color;
+        await ApplyTool();
+    }
+
+    private async Task ApplyTool()
+    {
+        if (_js is not null)
+            await _js.InvokeVoidAsync("setTool", _tool, _color, _width, _fontSize);
+    }
+
+    private async Task Call(string fn, params object[] args)
+    {
+        if (_js is not null)
+            await _js.InvokeVoidAsync(fn, args);
+    }
+
+    [JSInvokable]
+    public void OnAnnotationsChanged(string json)
+    {
+        _annotations = json;
+        Changed();
+        StateHasChanged();
+    }
+
+    private void SetScore(int subtaskId, object? value)
+    {
+        _scores[subtaskId] = decimal.TryParse(value?.ToString()?.Replace(',', '.'), System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : null;
+        Changed();
+    }
+
+    private void SetOverride(ChangeEventArgs e)
+    {
+        var parsed = decimal.TryParse(e.Value?.ToString()?.Replace(',', '.'), System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : (decimal?)null;
+        // Совпадает с суммой — значит, вручную не переопределяли
+        _override = _ctx!.Subtasks.Length > 0 && parsed == Sum ? null : parsed;
+        Changed();
+    }
+
+    private void ResetOverride()
+    {
+        _override = null;
+        Changed();
+    }
+
+    /// <summary>П-9.5: автосохранение черновика через секунду после последнего изменения.</summary>
+    private void Changed()
+    {
+        if (IsReadOnly)
+            return;
+        _saveState = "Есть изменения…";
+        _debounce?.Cancel();
+        _debounce = new CancellationTokenSource();
+        var token = _debounce.Token;
+        _ = Task.Delay(1000, token).ContinueWith(async t =>
+        {
+            if (t.IsCanceled)
+                return;
+            await InvokeAsync(SaveAsync);
+        }, TaskScheduler.Default);
+    }
+
+    private async Task FlushAsync()
+    {
+        if (_debounce is null)
+            return;
+        _debounce.Cancel();
+        _debounce = null;
+        if (_saveState == "Есть изменения…")
+            await SaveAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_sub is null || IsReadOnly)
+            return;
+        _saveState = "Сохраняю…";
+        StateHasChanged();
+        try
+        {
+            var review = await Api.Put<ReviewDto>($"api/submissions/{_sub.Id}/review", new SaveReviewRequest(_annotations, _comment,
+                _scores.Select(kv => new SubtaskScoreDto(kv.Key, kv.Value)).ToArray(), _override, _sub.Review?.UpdatedAt));
+            UpdateReview(review);
+            _saveState = $"Сохранено {Fmt.Dt(review.UpdatedAt)}";
+            _error = null;
+            _conflict = false;
+        }
+        catch (ApiError e)
+        {
+            _saveState = "Не сохранено";
+            _error = e.Message;
+            _conflict = e.Code == ErrorCodes.ReviewChangedByColleague;
+        }
+        StateHasChanged();
+    }
+
+    private void UpdateReview(ReviewDto review)
+    {
+        var updated = _sub! with { Review = review };
+        _ctx = _ctx! with { Submissions = _ctx.Submissions.Select(s => s.Id == updated.Id ? updated : s).ToArray() };
+        _sub = updated;
+    }
+
+    private async Task Send()
+    {
+        _sending = true;
+        _error = null;
+        try
+        {
+            _debounce?.Cancel();
+            await SaveAsync();
+            if (_error is not null)
+                return;
+            UpdateReview(await Api.Post<ReviewDto>($"api/submissions/{_sub!.Id}/review/send"));
+            _saveState = "Отправлено студенту";
+        }
+        catch (ApiError e)
+        {
+            _error = e.Message;
+        }
+        finally
+        {
+            _sending = false;
+        }
+    }
+
+    private async Task Download()
+    {
+        var bytes = await Api.Bytes($"api/submissions/{_sub!.Id}/file");
+        await JS.InvokeVoidAsync("fiit.saveFile", _sub.FileName, "application/pdf", bytes);
+    }
+
+    private async Task DownloadReviewed()
+    {
+        var bytes = await Api.Bytes($"api/submissions/{_sub!.Id}/reviewed-file");
+        await JS.InvokeVoidAsync("fiit.saveFile", $"проверка-v{_sub.Version}.pdf", "application/pdf", bytes);
+    }
+
+    /// <summary>П-9.8: следующий студент / следующая непроверенная в рамках этого ДЗ и текущего фильтра таблицы.</summary>
+    private async Task Next(bool unreviewedOnly)
+    {
+        await FlushAsync();
+        var rows = Prefs.LastGradebook!.Rows;
+        var start = Array.FindIndex(rows, r => r.StudentId == StudentId);
+        for (var i = 1; i <= rows.Length; i++)
+        {
+            var row = rows[(start + i + rows.Length) % rows.Length];
+            var cell = row.Cells.FirstOrDefault(c => c.HomeworkId == HomeworkId);
+            if (cell?.LatestSubmissionId is null || row.StudentId == StudentId)
+                continue;
+            if (unreviewedOnly && cell.Status is not (CellStatus.OnReview or CellStatus.ReviewedWithUnsentChanges))
+                continue;
+            Nav.NavigateTo($"review/{HomeworkId}/{row.StudentId}");
+            return;
+        }
+        _error = unreviewedOnly ? "Непроверенных работ больше нет" : "Других сдач нет";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await FlushAsync();
+        if (_js is not null)
+        {
+            try
+            {
+                await _js.InvokeVoidAsync("destroy");
+                await _js.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+        _self?.Dispose();
+    }
+}
