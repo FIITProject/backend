@@ -279,7 +279,7 @@ else
         Changed();
     }
 
-    /// <summary>П-9.5: автосохранение черновика через секунду после последнего изменения.</summary>
+    /// <summary>П-9.6: автосохранение черновика через секунду после последнего изменения.</summary>
     private void Changed()
     {
         if (IsReadOnly)
@@ -372,7 +372,7 @@ else
         await JS.InvokeVoidAsync("fiit.saveFile", $"проверка-v{_sub.Version}.pdf", "application/pdf", bytes);
     }
 
-    /// <summary>П-9.8: следующий студент / следующая непроверенная в рамках этого ДЗ и текущего фильтра таблицы.</summary>
+    /// <summary>П-9.11: следующий студент / следующая непроверенная в рамках этого ДЗ и текущего фильтра таблицы.</summary>
     private async Task Next(bool unreviewedOnly)
     {
         await FlushAsync();

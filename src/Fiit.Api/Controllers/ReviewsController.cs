@@ -37,7 +37,7 @@ public class ReviewsController(AppDbContext db, Access access, IFileStorage stor
                 s.FileName, s.FileSize, s.Version == latestVersion, s.Review is null ? null : ToDto(s.Review, hw))).ToArray());
     }
 
-    /// <summary>П-9.9: оригинальный PDF студента.</summary>
+    /// <summary>П-9.12: оригинальный PDF студента.</summary>
     [HttpGet("api/submissions/{id:int}/file")]
     public async Task<FileContentResult> File(int id, CancellationToken ct)
     {
@@ -54,7 +54,7 @@ public class ReviewsController(AppDbContext db, Access access, IFileStorage stor
         return File(await storage.GetAsync(key, ct), "application/pdf", $"проверка-v{submission.Version}.pdf");
     }
 
-    /// <summary>П-9.5: черновик проверки. Править можно только последнюю версию (старые — только просмотр).</summary>
+    /// <summary>П-9.6: черновик проверки. Править можно только последнюю версию (старые — только просмотр).</summary>
     [HttpPut("api/submissions/{id:int}/review")]
     public async Task<ReviewDto> Save(int id, SaveReviewRequest request, CancellationToken ct)
     {
@@ -112,7 +112,7 @@ public class ReviewsController(AppDbContext db, Access access, IFileStorage stor
         return ToDto(review, hw);
     }
 
-    /// <summary>П-9.6, П-9.7: впечатать пометки в PDF и отправить студенту оценку, комментарий и файл. Повторная отправка — «Проверка обновлена».</summary>
+    /// <summary>П-9.7, П-9.8: впечатать пометки в PDF и отправить студенту оценку, комментарий и файл. Повторная отправка — «Проверка обновлена».</summary>
     [HttpPost("api/submissions/{id:int}/review/send")]
     public async Task<ReviewDto> Send(int id, CancellationToken ct)
     {
