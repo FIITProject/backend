@@ -12,7 +12,7 @@ namespace Fiit.Api.Services;
 /// </summary>
 public record Annotation(string Type, int Page, string? Color, double Width, double Opacity, double[]? Points, double X, double Y, string? Text, double Size);
 
-/// <summary>Впечатывает пометки преподавателя в PDF студента (П-9.6). Оригинал не меняется — возвращается новый файл.</summary>
+/// <summary>Впечатывает пометки преподавателя в PDF студента (П-9.7). Оригинал не меняется — возвращается новый файл.</summary>
 public static class PdfAnnotator
 {
     public const int MaxAnnotationsJsonLength = 2 * 1024 * 1024;
