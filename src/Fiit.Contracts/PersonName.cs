@@ -1,8 +1,8 @@
 using System.Text.RegularExpressions;
 
-namespace Fiit.Api.Domain;
+namespace Fiit.Contracts;
 
-/// <summary>Валидация ФИО из анкеты (С-1.5): непустое, только буквы, пробел и дефис, до 100 символов.</summary>
+/// <summary>Валидация ФИО из анкеты (С-1.5), общая для API и бота: непустое, только буквы, пробел и дефис, до 100 символов.</summary>
 public static partial class PersonName
 {
     [GeneratedRegex(@"^[\p{L}]+(?:[ \-][\p{L}]+)*$")]

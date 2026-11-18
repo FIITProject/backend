@@ -4,6 +4,7 @@ using Fiit.Api;
 using Fiit.Api.Auth;
 using Fiit.Api.Data;
 using Fiit.Api.Services;
+using Fiit.Messaging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
@@ -30,6 +31,15 @@ builder.Services.AddScoped<Access>();
 builder.Services.AddScoped<StudentFactsLoader>();
 builder.Services.AddScoped<Notifier>();
 builder.Services.AddScoped<HomeworkStats>();
+builder.Services.AddScoped<SubmissionFileGuard>();
+builder.Services.AddOptions<RabbitMqOptions>().BindConfiguration(RabbitMqOptions.Section);
+if (builder.Configuration.GetSection(RabbitMqOptions.Section).Get<RabbitMqOptions>()?.Enabled == true)
+    builder.Services.AddHostedService<NotificationOutboxPublisher>();
+builder.Services.AddOptions<ClamAvOptions>().BindConfiguration(ClamAvOptions.Section);
+if (builder.Configuration.GetValue<bool>($"{ClamAvOptions.Section}:Enabled"))
+    builder.Services.AddSingleton<IMalwareScanner, ClamAvScanner>();
+else
+    builder.Services.AddSingleton<IMalwareScanner, DisabledMalwareScanner>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
@@ -76,15 +86,26 @@ var app = builder.Build();
 if (Cli.IsCommand(args))
     return await Cli.RunAsync(app, args);
 
-if (app.Configuration.GetValue<bool>("Db:MigrateOnStartup"))
+// Миграции — отдельный шаг деплоя (команда migrate). API со схемой старее своего кода не стартует.
+// MigrateOnStartup — только для тестов и локального запуска без compose.
+await using (var scope = app.Services.CreateAsyncScope())
 {
-    await using var scope = app.Services.CreateAsyncScope();
-    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (app.Configuration.GetValue<bool>("Db:MigrateOnStartup"))
+        await db.Database.MigrateAsync();
+    else if ((await db.Database.GetPendingMigrationsAsync()).ToList() is { Count: > 0 } pending)
+        throw new InvalidOperationException($"Database schema is not up to date, run 'migrate' first. Pending: {string.Join(", ", pending)}");
 }
 
 await app.Services.GetRequiredService<S3FileStorage>().EnsureBucketAsync(CancellationToken.None);
 
 app.UseExceptionHandler();
+// Браузер не угадывает тип ответа: PDF студента никогда не исполнится как HTML/скрипт
+app.Use((http, next) =>
+{
+    http.Response.Headers.XContentTypeOptions = "nosniff";
+    return next(http);
+});
 app.UseStatusCodePages();
 app.UseCors();
 app.UseAuthentication();

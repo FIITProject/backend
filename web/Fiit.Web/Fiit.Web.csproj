@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Fiit.Contracts\Fiit.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Fiit.Bot.Core\Fiit.Bot.Core.csproj" />
   </ItemGroup>
 
 </Project>

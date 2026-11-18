@@ -1,6 +1,5 @@
 using Fiit.Api.Auth;
 using Fiit.Api.Data;
-using Fiit.Api.Domain;
 using Fiit.Api.Services;
 using Fiit.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -10,68 +9,45 @@ using Microsoft.EntityFrameworkCore;
 namespace Fiit.Api.Controllers.Bot;
 
 /// <summary>
-/// Outbox уведомлений (Н-7): бот забирает задачи с арендой, отправляет в Telegram и подтверждает.
-/// Если бот упал, аренда истекает и задача возвращается в очередь.
+/// Уведомления приходят боту через RabbitMQ (Н-7). Здесь бот проверяет, не доставлено ли уже уведомление (повторная доставка из очереди),
+/// сообщает результат и забирает PDF проверки.
 /// </summary>
 [ApiController]
 [Route("api/bot/notifications")]
 [Authorize(Policy = Policies.Bot)]
 public class BotNotificationsController(AppDbContext db, IFileStorage storage, TimeProvider time) : ControllerBase
 {
-    private static readonly TimeSpan Lease = TimeSpan.FromSeconds(60);
-    private const int MaxAttempts = 8;
-
-    [HttpPost("claim")]
-    public async Task<BotNotificationDto[]> Claim(ClaimRequest request, CancellationToken ct)
+    [HttpGet("{id:int}")]
+    public async Task<BotNotificationStateDto> State(int id, CancellationToken ct)
     {
-        var now = time.GetUtcNow();
-        var limit = Math.Clamp(request.Limit, 1, 100);
-        var lockedUntil = now + Lease;
-        var pending = nameof(NotificationStatus.Pending);
-        var claimed = await db.Notifications.FromSql($"""
-                UPDATE notifications SET locked_until = {lockedUntil}, attempts = attempts + 1
-                WHERE id IN (
-                    SELECT id FROM notifications
-                    WHERE status = {pending} AND available_at <= {now} AND (locked_until IS NULL OR locked_until < {now})
-                    ORDER BY id
-                    LIMIT {limit}
-                    FOR UPDATE SKIP LOCKED)
-                RETURNING *
-                """)
-            .AsNoTracking()
-            .ToListAsync(ct);
-
-        var studentIds = claimed.Select(n => n.StudentId).Distinct().ToList();
-        var telegram = await db.Students.Where(s => studentIds.Contains(s.Id)).ToDictionaryAsync(s => s.Id, s => s.TelegramUserId, ct);
-        return claimed.OrderBy(n => n.Id)
-            .Select(n => new BotNotificationDto(n.Id, telegram[n.StudentId], n.Kind, n.Text, n.HomeworkId, n.FileKey is not null, n.FileName))
-            .ToArray();
+        var n = await db.Notifications.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct) ?? throw ApiException.NotFound();
+        return new BotNotificationStateDto(n.Id, n.Status);
     }
 
-    [HttpPost("{id:int}/ack")]
-    public async Task Ack(int id, CancellationToken ct)
+    /// <summary>Отправлено в Telegram. Повторный вызов ничего не меняет.</summary>
+    [HttpPost("{id:int}/delivered")]
+    public async Task Delivered(int id, CancellationToken ct)
     {
         var n = await db.Notifications.FindAsync([id], ct) ?? throw ApiException.NotFound();
-        n.Status = NotificationStatus.Sent;
-        n.SentAt = time.GetUtcNow();
-        n.LockedUntil = null;
+        if (n.Status == NotificationStatus.Delivered)
+            return;
+        n.Status = NotificationStatus.Delivered;
+        n.DeliveredAt = time.GetUtcNow();
+        n.LastError = null;
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Ошибка отправки: временная — повтор с экспоненциальной задержкой, постоянная (или исчерпаны попытки) — failed.</summary>
-    [HttpPost("{id:int}/fail")]
-    public async Task Fail(int id, FailRequest request, CancellationToken ct)
+    /// <summary>Доставить не удалось (попытки кончились или ошибка постоянная). Студент заблокировал бота — значок у преподавателя (С-3.2).</summary>
+    [HttpPost("{id:int}/failed")]
+    public async Task Failed(int id, BotDeliveryFailedRequest request, CancellationToken ct)
     {
         var n = await db.Notifications.FindAsync([id], ct) ?? throw ApiException.NotFound();
-        var now = time.GetUtcNow();
+        if (n.Status == NotificationStatus.Delivered)
+            return;
+        n.Status = NotificationStatus.Failed;
         n.LastError = request.Error.Length > 1000 ? request.Error[..1000] : request.Error;
-        n.LockedUntil = null;
-        if (request.Permanent || request.BotBlocked || n.Attempts >= MaxAttempts)
-            n.Status = NotificationStatus.Failed;
-        else
-            n.AvailableAt = now + TimeSpan.FromSeconds(10 * Math.Pow(2, n.Attempts - 1));
         if (request.BotBlocked)
-            await db.Students.Where(s => s.Id == n.StudentId).ExecuteUpdateAsync(s => s.SetProperty(x => x.BotBlockedAt, now), ct);
+            await db.Students.Where(s => s.Id == n.StudentId).ExecuteUpdateAsync(s => s.SetProperty(x => x.BotBlockedAt, time.GetUtcNow()), ct);
         await db.SaveChangesAsync(ct);
     }
 
@@ -83,5 +59,20 @@ public class BotNotificationsController(AppDbContext db, IFileStorage storage, T
         if (n.FileKey is null)
             throw ApiException.NotFound("У уведомления нет файла");
         return File(await storage.GetAsync(n.FileKey, ct), "application/pdf", n.FileName ?? "проверка.pdf");
+    }
+
+    /// <summary>Уведомления студента по порядку — для эмулятора бота на тестовом сайте, который не читает RabbitMQ.</summary>
+    [HttpGet("~/api/bot/students/{telegramUserId:long}/notifications")]
+    public async Task<BotNotificationDto[]> ForStudent(long telegramUserId, int afterId, CancellationToken ct)
+    {
+        var studentId = await db.Students.Where(s => s.TelegramUserId == telegramUserId).Select(s => (int?)s.Id).FirstOrDefaultAsync(ct);
+        if (studentId is null)
+            return [];
+        var list = await db.Notifications.AsNoTracking()
+            .Where(n => n.StudentId == studentId && n.Id > afterId)
+            .OrderBy(n => n.Id)
+            .Take(100)
+            .ToListAsync(ct);
+        return list.Select(n => NotificationOutboxPublisher.ToDto(n, telegramUserId)).ToArray();
     }
 }

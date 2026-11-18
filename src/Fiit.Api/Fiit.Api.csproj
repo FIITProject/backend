@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Fiit.Contracts\Fiit.Contracts.csproj" />
+    <ProjectReference Include="..\Fiit.Messaging\Fiit.Messaging.csproj" />
   </ItemGroup>
 
   <ItemGroup>

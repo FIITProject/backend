@@ -67,10 +67,22 @@ public enum NotificationKind
     ReviewSent,
 }
 
-/// <summary>Задача на отправку. Text — готовый текст сообщения; HomeworkId — для кнопки «Сдать»; HasFile — PDF качать через /api/bot/notifications/{id}/file.</summary>
-public record BotNotificationDto(int Id, long TelegramUserId, NotificationKind Kind, string Text, int? HomeworkId, bool HasFile, string? FileName);
+/// <summary>Pending — в outbox API; Published — передано в RabbitMQ; Delivered — бот отправил в Telegram; Failed — доставить не удалось.</summary>
+public enum NotificationStatus
+{
+    Pending,
+    Published,
+    Delivered,
+    Failed,
+}
 
-public record ClaimRequest(int Limit = 20);
+/// <summary>
+/// Уведомление студенту — тело сообщения в очереди RabbitMQ (см. Fiit.Messaging.NotificationQueues).
+/// Text — готовый текст; HomeworkId — для кнопки «Сдать»; HasFile — PDF качать через /api/bot/notifications/{id}/file.
+/// </summary>
+public record BotNotificationDto(int Id, long TelegramUserId, NotificationKind Kind, string Text, int? HomeworkId, bool HasFile, string? FileName, DateTimeOffset CreatedAt);
 
-/// <summary>Permanent — не ретраить; BotBlocked — студент заблокировал бота.</summary>
-public record FailRequest(string Error, bool Permanent, bool BotBlocked);
+public record BotNotificationStateDto(int Id, NotificationStatus Status);
+
+/// <summary>BotBlocked — студент заблокировал бота (С-3.2): у преподавателя появится значок.</summary>
+public record BotDeliveryFailedRequest(string Error, bool BotBlocked);

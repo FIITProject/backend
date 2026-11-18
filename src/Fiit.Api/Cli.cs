@@ -4,12 +4,38 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Fiit.Api;
 
-/// <summary>Служебные команды: <c>dotnet Fiit.Api.dll add-teacher &lt;login&gt; &lt;password&gt; &lt;full name&gt;</c> — первый преподаватель заводится так (П-10).</summary>
+/// <summary>
+/// Служебные команды того же образа:
+/// <c>migrate</c> — применить миграции БД (отдельный шаг деплоя, до запуска новой версии API);
+/// <c>add-teacher &lt;login&gt; &lt;password&gt; &lt;full name&gt;</c> — первый преподаватель заводится так (П-10).
+/// </summary>
 public static class Cli
 {
-    public static bool IsCommand(string[] args) => args is ["add-teacher", ..];
+    public static bool IsCommand(string[] args) => args is ["migrate", ..] or ["add-teacher", ..];
 
-    public static async Task<int> RunAsync(WebApplication app, string[] args)
+    public static Task<int> RunAsync(WebApplication app, string[] args) => args[0] switch
+    {
+        "migrate" => MigrateAsync(app),
+        _ => AddTeacherAsync(app, args),
+    };
+
+    private static async Task<int> MigrateAsync(WebApplication app)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var pending = (await db.Database.GetPendingMigrationsAsync()).ToList();
+        if (pending.Count == 0)
+        {
+            Console.WriteLine("Database is up to date");
+            return 0;
+        }
+        Console.WriteLine($"Applying migrations: {string.Join(", ", pending)}");
+        await db.Database.MigrateAsync();
+        Console.WriteLine("Done");
+        return 0;
+    }
+
+    private static async Task<int> AddTeacherAsync(WebApplication app, string[] args)
     {
         if (args is not ["add-teacher", var login, var password, .. var nameParts] || nameParts.Length == 0)
         {
@@ -19,7 +45,11 @@ public static class Cli
 
         await using var scope = app.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.MigrateAsync();
+        if ((await db.Database.GetPendingMigrationsAsync()).Any())
+        {
+            Console.Error.WriteLine("Database schema is not up to date, run 'migrate' first");
+            return 1;
+        }
 
         if (await db.Teachers.AnyAsync(t => t.Login == login))
         {

@@ -1,9 +1,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY src/Fiit.Contracts/Fiit.Contracts.csproj src/Fiit.Contracts/
+COPY src/Fiit.Bot.Core/Fiit.Bot.Core.csproj src/Fiit.Bot.Core/
 COPY web/Fiit.Web/Fiit.Web.csproj web/Fiit.Web/
 RUN dotnet restore web/Fiit.Web/Fiit.Web.csproj
 COPY src/Fiit.Contracts/ src/Fiit.Contracts/
+COPY src/Fiit.Bot.Core/ src/Fiit.Bot.Core/
 COPY web/Fiit.Web/ web/Fiit.Web/
 RUN dotnet publish web/Fiit.Web -c Release -o /out --no-restore
 

@@ -1,19 +1,20 @@
 @page "/bot"
 @implements IDisposable
 @inject BotEmulator Bot
-@inject BotApi BotApi
+@inject BotKey BotKey
 @inject IJSRuntime JS
 
 <h1>Эмулятор Telegram-бота</h1>
 <p class="muted">
-    Работает с теми же <span class="mono">/api/bot/*</span>, что и настоящий бот: анкета, «Мои задания», сдача PDF, уведомления.
+    Тот же диалог, что в настоящем Telegram-боте (<span class="mono">Fiit.Bot.Core</span>), поверх тех же <span class="mono">/api/bot/*</span>:
+    анкета, «Мои задания», сдача PDF. Уведомления настоящему боту приходят через RabbitMQ, эмулятор читает их из outbox.
     Студенты живут только в этой вкладке; при перезагрузке их Telegram-аккаунты можно восстановить по ID.
 </p>
 
 <div class="emulator">
     <div class="chats">
         <div class="panel">
-            <div class="field"><label>Ключ бота (X-Bot-Key)</label><input @bind="BotApi.Key" /></div>
+            <div class="field"><label>Ключ бота (X-Bot-Key)</label><input @bind="BotKey.Value" /></div>
             <label style="display:block;margin-top:8px"><input type="checkbox" @bind="_autoPoll" @bind:after="TogglePoll" /> Забирать уведомления каждые 3 с</label>
             <button class="small" style="margin-top:8px" @onclick="PollOnce">Забрать уведомления</button>
             <div class="muted">@_pollState</div>
@@ -44,16 +45,16 @@
                 {
                     <div class="msg @(m.FromBot ? "bot" : "me")">
                         @m.Text
-                        @if (m.FileNotificationId is { } fid)
+                        @if (m.Attachment is { } file)
                         {
-                            <div class="buttons"><button @onclick="() => DownloadFile(fid, m.FileName)">📄 @(m.FileName ?? "файл.pdf")</button></div>
+                            <div class="buttons"><button @onclick="() => DownloadFile(file.NotificationId, file.FileName)">📄 @file.FileName</button></div>
                         }
-                        @if (m.Buttons.Count > 0)
+                        @foreach (var row in m.Rows)
                         {
                             <div class="buttons">
-                                @foreach (var b in m.Buttons)
+                                @foreach (var b in row)
                                 {
-                                    <button @onclick="b.Action">@b.Text</button>
+                                    <button @onclick="() => Bot.Click(chat, b)">@b.Text</button>
                                 }
                             </div>
                         }
@@ -119,7 +120,7 @@
             var n = await Bot.Poll();
             _pollState = $"Проверено {DateTime.Now:HH:mm:ss}" + (n > 0 ? $", получено {n}" : "");
         }
-        catch (ApiError e)
+        catch (Fiit.Bot.Core.BotApiException e)
         {
             _pollState = e.Message;
         }

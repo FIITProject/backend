@@ -5,12 +5,15 @@ using System.Text.Json.Serialization;
 using Fiit.Api.Data;
 using Fiit.Api.Domain;
 using Fiit.Contracts;
+using Fiit.Api.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using Testcontainers.PostgreSql;
+using Testcontainers.RabbitMq;
 
 namespace Fiit.Api.Tests;
 
@@ -39,7 +42,13 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         .WithPortBinding(9000, true)
         .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(r => r.ForPort(9000).ForPath("/health")))
         .Build();
+    private readonly RabbitMqContainer _rabbit = new RabbitMqBuilder("rabbitmq:4.1-alpine").Build();
     private static int _seq;
+
+    public string RabbitUri => _rabbit.GetConnectionString();
+
+    /// <summary>Антивирус в тестах: по умолчанию всё чисто, тест может подменить ответ.</summary>
+    public FakeMalwareScanner Scanner { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -54,6 +63,8 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Storage:SecretKey", S3SecretKey);
         builder.UseSetting("Storage:Bucket", "test");
         builder.UseSetting("Storage:CreateBucket", "true");
+        builder.UseSetting("RabbitMq:Uri", _rabbit.GetConnectionString());
+        builder.ConfigureTestServices(services => services.AddSingleton<IMalwareScanner>(Scanner));
     }
 
     public static int Next() => Interlocked.Increment(ref _seq);
@@ -99,14 +110,22 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        await Task.WhenAll(_db.StartAsync(), _s3.StartAsync());
+        await Task.WhenAll(_db.StartAsync(), _s3.StartAsync(), _rabbit.StartAsync());
     }
 
     async Task IAsyncLifetime.DisposeAsync()
     {
         await _db.DisposeAsync();
         await _s3.DisposeAsync();
+        await _rabbit.DisposeAsync();
     }
+}
+
+public class FakeMalwareScanner : IMalwareScanner
+{
+    public Func<byte[], ScanResult> Verdict { get; set; } = _ => new ScanResult(true);
+
+    public Task<ScanResult> ScanAsync(byte[] content, CancellationToken ct) => Task.FromResult(Verdict(content));
 }
 
 public static class HttpExtensions
