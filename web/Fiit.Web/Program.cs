@@ -13,7 +13,7 @@ var baseAddress = new Uri(string.IsNullOrEmpty(apiBase) ? builder.HostEnvironmen
 builder.Services.AddScoped(_ => new HttpClient { BaseAddress = baseAddress });
 builder.Services.AddScoped<Session>();
 builder.Services.AddScoped<Api>();
-builder.Services.AddScoped<BotApi>();
+builder.Services.AddScoped<BotKey>();
 builder.Services.AddScoped<BotEmulator>();
 builder.Services.AddScoped<Prefs>();
 

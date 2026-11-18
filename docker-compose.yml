@@ -1,4 +1,4 @@
-# Локальная разработка: postgres + S3 (RustFS) + migrate + api + web.
+# Локальная разработка: postgres + S3 (RustFS) + rabbitmq + clamav + migrate + api + web (+ bot с профилем bot).
 # Запуск: docker compose up -d --build, затем первый преподаватель:
 #   docker compose run --rm migrate add-teacher admin admin-password Иванов Иван Иванович
 # Сайт: http://localhost:8080 (API — /api, эмулятор бота — раздел «Бот (эмулятор)»).
@@ -49,6 +49,7 @@ services:
   # Отдельный шаг деплоя: применить миграции тем же образом и выйти. API стартует только после успеха.
   migrate:
     build: .
+    init: true
     command: ["migrate"]
     depends_on:
       db:
@@ -60,6 +61,7 @@ services:
 
   api:
     build: .
+    init: true
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -90,6 +92,26 @@ services:
     image: clamav/clamav-debian:1.4
     volumes:
       - clamav-data:/var/lib/clamav
+
+  # Telegram-бот. Нужен токен от @BotFather, поэтому запускается отдельно:
+  #   TELEGRAM_TOKEN=... BOT_USERNAME=имя_бота docker compose --profile bot up -d --build
+  bot:
+    profiles: ["bot"]
+    init: true
+    build:
+      context: .
+      dockerfile: src/Fiit.Bot/Dockerfile
+    depends_on:
+      api:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+    environment:
+      Telegram__Token: ${TELEGRAM_TOKEN:-}
+      Api__BaseUrl: http://api:8080/
+      Api__BotKey: ${BOT_KEY:-dev-bot-key}
+      RabbitMq__Uri: amqp://fiit:fiit@rabbitmq:5672/
 
   web:
     build:

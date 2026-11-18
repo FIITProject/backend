@@ -1,11 +1,14 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Fiit.Api/Fiit.Api.csproj" />
+    <Project Path="src/Fiit.Bot.Core/Fiit.Bot.Core.csproj" />
+    <Project Path="src/Fiit.Bot/Fiit.Bot.csproj" />
     <Project Path="src/Fiit.Contracts/Fiit.Contracts.csproj" />
     <Project Path="src/Fiit.Messaging/Fiit.Messaging.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Fiit.Api.Tests/Fiit.Api.Tests.csproj" />
+    <Project Path="tests/Fiit.Bot.Tests/Fiit.Bot.Tests.csproj" />
   </Folder>
   <Folder Name="/web/">
     <Project Path="web/Fiit.Web/Fiit.Web.csproj" />
