@@ -1,6 +1,6 @@
-# Локальная разработка: postgres + S3 (RustFS) + api + web.
+# Локальная разработка: postgres + S3 (RustFS) + migrate + api + web.
 # Запуск: docker compose up -d --build, затем первый преподаватель:
-#   docker compose exec api dotnet Fiit.Api.dll add-teacher admin admin-password Иванов Иван Иванович
+#   docker compose run --rm migrate add-teacher admin admin-password Иванов Иван Иванович
 # Сайт: http://localhost:8080 (API — /api, эмулятор бота — раздел «Бот (эмулятор)»).
 services:
   db:
@@ -30,11 +30,23 @@ services:
     volumes:
       - s3-data:/data
 
-  api:
+  # Отдельный шаг деплоя: применить миграции тем же образом и выйти. API стартует только после успеха.
+  migrate:
     build: .
+    command: ["migrate"]
     depends_on:
       db:
         condition: service_healthy
+    restart: "no"
+    environment:
+      ConnectionStrings__Db: Host=db;Database=fiit;Username=fiit;Password=fiit
+      Jwt__Key: ${JWT_KEY:-dev-only-key-change-me-dev-only-key-change-me}
+
+  api:
+    build: .
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
       s3:
         condition: service_started
     restart: on-failure

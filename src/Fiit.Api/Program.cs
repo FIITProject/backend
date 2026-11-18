@@ -76,10 +76,15 @@ var app = builder.Build();
 if (Cli.IsCommand(args))
     return await Cli.RunAsync(app, args);
 
-if (app.Configuration.GetValue<bool>("Db:MigrateOnStartup"))
+// Миграции — отдельный шаг деплоя (команда migrate). API со схемой старее своего кода не стартует.
+// MigrateOnStartup — только для тестов и локального запуска без compose.
+await using (var scope = app.Services.CreateAsyncScope())
 {
-    await using var scope = app.Services.CreateAsyncScope();
-    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.MigrateAsync();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (app.Configuration.GetValue<bool>("Db:MigrateOnStartup"))
+        await db.Database.MigrateAsync();
+    else if ((await db.Database.GetPendingMigrationsAsync()).ToList() is { Count: > 0 } pending)
+        throw new InvalidOperationException($"Database schema is not up to date, run 'migrate' first. Pending: {string.Join(", ", pending)}");
 }
 
 await app.Services.GetRequiredService<S3FileStorage>().EnsureBucketAsync(CancellationToken.None);
