@@ -30,6 +30,12 @@ builder.Services.AddScoped<Access>();
 builder.Services.AddScoped<StudentFactsLoader>();
 builder.Services.AddScoped<Notifier>();
 builder.Services.AddScoped<HomeworkStats>();
+builder.Services.AddScoped<SubmissionFileGuard>();
+builder.Services.AddOptions<ClamAvOptions>().BindConfiguration(ClamAvOptions.Section);
+if (builder.Configuration.GetValue<bool>($"{ClamAvOptions.Section}:Enabled"))
+    builder.Services.AddSingleton<IMalwareScanner, ClamAvScanner>();
+else
+    builder.Services.AddSingleton<IMalwareScanner, DisabledMalwareScanner>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(o =>
@@ -90,6 +96,12 @@ await using (var scope = app.Services.CreateAsyncScope())
 await app.Services.GetRequiredService<S3FileStorage>().EnsureBucketAsync(CancellationToken.None);
 
 app.UseExceptionHandler();
+// Браузер не угадывает тип ответа: PDF студента никогда не исполнится как HTML/скрипт
+app.Use((http, next) =>
+{
+    http.Response.Headers.XContentTypeOptions = "nosniff";
+    return next(http);
+});
 app.UseStatusCodePages();
 app.UseCors();
 app.UseAuthentication();

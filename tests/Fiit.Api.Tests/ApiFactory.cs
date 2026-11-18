@@ -5,8 +5,10 @@ using System.Text.Json.Serialization;
 using Fiit.Api.Data;
 using Fiit.Api.Domain;
 using Fiit.Contracts;
+using Fiit.Api.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
@@ -41,6 +43,9 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         .Build();
     private static int _seq;
 
+    /// <summary>Антивирус в тестах: по умолчанию всё чисто, тест может подменить ответ.</summary>
+    public FakeMalwareScanner Scanner { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -54,6 +59,7 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Storage:SecretKey", S3SecretKey);
         builder.UseSetting("Storage:Bucket", "test");
         builder.UseSetting("Storage:CreateBucket", "true");
+        builder.ConfigureTestServices(services => services.AddSingleton<IMalwareScanner>(Scanner));
     }
 
     public static int Next() => Interlocked.Increment(ref _seq);
@@ -107,6 +113,13 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await _db.DisposeAsync();
         await _s3.DisposeAsync();
     }
+}
+
+public class FakeMalwareScanner : IMalwareScanner
+{
+    public Func<byte[], ScanResult> Verdict { get; set; } = _ => new ScanResult(true);
+
+    public Task<ScanResult> ScanAsync(byte[] content, CancellationToken ct) => Task.FromResult(Verdict(content));
 }
 
 public static class HttpExtensions

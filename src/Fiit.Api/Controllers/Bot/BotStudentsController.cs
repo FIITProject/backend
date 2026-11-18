@@ -17,7 +17,7 @@ namespace Fiit.Api.Controllers.Bot;
 [ApiController]
 [Route("api/bot")]
 [Authorize(Policy = Policies.Bot)]
-public class BotStudentsController(AppDbContext db, StudentFactsLoader factsLoader, IFileStorage storage, TimeProvider time) : ControllerBase
+public class BotStudentsController(AppDbContext db, StudentFactsLoader factsLoader, IFileStorage storage, SubmissionFileGuard fileGuard, TimeProvider time) : ControllerBase
 {
     /// <summary>С-1.1: приглашение по коду из ссылки. Закрытое/истёкшее — IsOpen = false (С-1.3).</summary>
     [HttpGet("invites/{code}")]
@@ -194,7 +194,7 @@ public class BotStudentsController(AppDbContext db, StudentFactsLoader factsLoad
             result);
     }
 
-    /// <summary>С-5: сдать PDF (до 20 МБ). Каждая сдача — новая версия; после дедлайна тоже можно.</summary>
+    /// <summary>С-5: сдать PDF (до 20 МБ). Файл проверяется до сохранения (<see cref="SubmissionFileGuard"/>). Каждая сдача — новая версия; после дедлайна тоже можно.</summary>
     [HttpPost("students/{telegramUserId:long}/homeworks/{homeworkId:int}/submissions")]
     [RequestSizeLimit(Limits.MaxPdfBytes + 1024 * 1024)]
     public async Task<BotSubmitResponse> Submit(long telegramUserId, int homeworkId, IFormFile file, CancellationToken ct)
@@ -211,6 +211,7 @@ public class BotStudentsController(AppDbContext db, StudentFactsLoader factsLoad
         var bytes = ms.ToArray();
         if (bytes.Length < 5 || !bytes.AsSpan(0, 5).SequenceEqual("%PDF-"u8))
             throw ApiException.BadRequest("Нужен файл в формате PDF", ErrorCodes.NotPdf);
+        await fileGuard.EnsureSafeAsync(bytes, $"student {student.Id}, homework {homeworkId}", ct);
 
         var key = $"submissions/{homeworkId}/{student.Id}/{Guid.NewGuid():N}.pdf";
         await storage.PutAsync(key, bytes, "application/pdf", ct);

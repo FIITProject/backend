@@ -31,6 +31,14 @@ public static class ErrorCodes
     public const string CourseArchived = "course_archived";
     public const string NotPdf = "not_pdf";
     public const string FileTooLarge = "file_too_large";
+    public const string PdfEncrypted = "pdf_encrypted";
+    public const string PdfTooManyPages = "pdf_too_many_pages";
+    /// <summary>Активное содержимое: скрипты, вложения, запуск программ.</summary>
+    public const string PdfUnsafe = "pdf_unsafe";
+    /// <summary>Антивирус нашёл угрозу.</summary>
+    public const string PdfInfected = "pdf_infected";
+    /// <summary>Антивирус недоступен — файл не принят, можно повторить позже.</summary>
+    public const string ScanUnavailable = "scan_unavailable";
     public const string NotEnrolled = "not_enrolled";
     public const string PasswordChangeRequired = "password_change_required";
     public const string ReviewChangedByColleague = "review_changed";

@@ -60,8 +60,17 @@ services:
       Storage__SecretKey: fiit-minio-secret
       Storage__Bucket: fiit-homeworks
       Storage__CreateBucket: "true"
+      ClamAv__Enabled: "true"
+      ClamAv__Host: clamav
     ports:
       - "5080:8080"
+
+  # Антивирус для сдаваемых PDF. При первом запуске качает базы сигнатур (1–3 минуты);
+  # пока clamd не готов, сдача отвечает «Не удалось проверить файл, попробуйте позже».
+  clamav:
+    image: clamav/clamav-debian:1.4
+    volumes:
+      - clamav-data:/var/lib/clamav
 
   web:
     build:
@@ -75,3 +84,4 @@ services:
 volumes:
   db-data:
   s3-data:
+  clamav-data:
