@@ -28,6 +28,7 @@ public class StudentChat(long telegramUserId, string username)
     internal bool Known { get; set; }
     internal int? AwaitingPdfFor { get; set; }
     internal (byte[] Bytes, string Name)? PendingPdf { get; set; }
+    internal int LastNotificationId { get; set; }
 }
 
 internal enum Step
@@ -201,32 +202,38 @@ public class BotEmulator(BotApi api)
         }))).ToArray());
     });
 
-    /// <summary>Как цикл бота: забрать уведомления из outbox, «отправить» в чаты и подтвердить.</summary>
+    /// <summary>
+    /// Уведомления настоящему боту идут через RabbitMQ; эмулятор показывает, что поставлено студентам его вкладки, читая outbox через API.
+    /// </summary>
     public async Task<int> Poll()
     {
-        var batch = await api.Claim();
-        foreach (var n in batch)
+        var received = 0;
+        foreach (var chat in Chats.ToList())
         {
-            var chat = Chats.FirstOrDefault(c => c.TelegramUserId == n.TelegramUserId) ?? NewStudentSilently(n.TelegramUserId);
-            var buttons = new List<ChatButton>();
-            switch (n.Kind)
+            var batch = await api.Notifications(chat.TelegramUserId, chat.LastNotificationId);
+            foreach (var n in batch)
             {
-                case NotificationKind.ApplicationApproved:
-                    buttons.Add(MyTasksButton(chat));
-                    break;
-                case NotificationKind.ApplicationRejected:
-                    buttons.Add(new ChatButton("Заполнить заново", () => Start(chat, chat.InviteCode)));
-                    break;
-                case NotificationKind.HomeworkPublished or NotificationKind.HomeworkChanged when n.HomeworkId is { } hw:
-                    buttons.Add(new ChatButton("Сдать", () => Guard(chat, () => AskPdf(chat, hw))));
-                    break;
+                var buttons = new List<ChatButton>();
+                switch (n.Kind)
+                {
+                    case NotificationKind.ApplicationApproved:
+                        buttons.Add(MyTasksButton(chat));
+                        break;
+                    case NotificationKind.ApplicationRejected:
+                        buttons.Add(new ChatButton("Заполнить заново", () => Start(chat, chat.InviteCode)));
+                        break;
+                    case NotificationKind.HomeworkPublished or NotificationKind.HomeworkChanged when n.HomeworkId is { } hw:
+                        buttons.Add(new ChatButton("Сдать", () => Guard(chat, () => AskPdf(chat, hw))));
+                        break;
+                }
+                chat.Messages.Add(new ChatMessage(true, n.Text, buttons, n.HasFile ? n.Id : null, n.FileName));
+                chat.LastNotificationId = n.Id;
             }
-            chat.Messages.Add(new ChatMessage(true, n.Text, buttons, n.HasFile ? n.Id : null, n.FileName));
-            await api.Ack(n.Id);
+            received += batch.Length;
         }
-        if (batch.Length > 0)
+        if (received > 0)
             Changed?.Invoke();
-        return batch.Length;
+        return received;
     }
 
     public Task<byte[]> DownloadFile(int notificationId) => api.NotificationFile(notificationId);
@@ -399,13 +406,6 @@ public class BotEmulator(BotApi api)
     }
 
     // ── Служебное ─────────────────────────────────────────────────────
-
-    private StudentChat NewStudentSilently(long tgId)
-    {
-        var chat = new StudentChat(tgId, $"student{tgId % 10000}");
-        Chats.Add(chat);
-        return chat;
-    }
 
     private static void Reset(StudentChat chat)
     {

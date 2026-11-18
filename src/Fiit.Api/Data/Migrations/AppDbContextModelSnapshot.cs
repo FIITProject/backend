@@ -363,17 +363,13 @@ namespace Fiit.Api.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("Attempts")
-                        .HasColumnType("integer")
-                        .HasColumnName("attempts");
-
-                    b.Property<DateTimeOffset>("AvailableAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("available_at");
-
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("delivered_at");
 
                     b.Property<string>("FileKey")
                         .HasColumnType("text")
@@ -397,13 +393,9 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("last_error");
 
-                    b.Property<DateTimeOffset?>("LockedUntil")
+                    b.Property<DateTimeOffset?>("PublishedAt")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("locked_until");
-
-                    b.Property<DateTimeOffset?>("SentAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("sent_at");
+                        .HasColumnName("published_at");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -423,11 +415,12 @@ namespace Fiit.Api.Data.Migrations
                     b.HasKey("Id")
                         .HasName("pk_notifications");
 
-                    b.HasIndex("StudentId")
-                        .HasDatabaseName("ix_notifications_student_id");
+                    b.HasIndex("Id")
+                        .HasDatabaseName("ix_notifications_pending")
+                        .HasFilter("status = 'Pending'");
 
-                    b.HasIndex("Status", "AvailableAt")
-                        .HasDatabaseName("ix_notifications_status_available_at");
+                    b.HasIndex("StudentId", "Id")
+                        .HasDatabaseName("ix_notifications_student_id_id");
 
                     b.ToTable("notifications", (string)null);
                 });

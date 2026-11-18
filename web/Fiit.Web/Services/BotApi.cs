@@ -15,8 +15,7 @@ public class BotApi(HttpClient http, IConfiguration config)
     public Task<BotApplicationResponse> Apply(BotApplicationRequest r) => Send<BotApplicationResponse>(HttpMethod.Post, "api/bot/applications", JsonContent.Create(r, options: Api.Json));
     public Task<BotHomeworksDto> Homeworks(long tgId) => Get<BotHomeworksDto>($"api/bot/students/{tgId}/homeworks");
     public Task<BotHomeworkDto> Homework(long tgId, int id) => Get<BotHomeworkDto>($"api/bot/students/{tgId}/homeworks/{id}");
-    public Task<BotNotificationDto[]> Claim() => Send<BotNotificationDto[]>(HttpMethod.Post, "api/bot/notifications/claim", JsonContent.Create(new ClaimRequest(50), options: Api.Json));
-    public Task Ack(int id) => Send<object?>(HttpMethod.Post, $"api/bot/notifications/{id}/ack", null, read: false);
+    public Task<BotNotificationDto[]> Notifications(long tgId, int afterId) => Get<BotNotificationDto[]>($"api/bot/students/{tgId}/notifications?afterId={afterId}");
 
     public Task<BotSubmitResponse> Submit(long tgId, int homeworkId, byte[] pdf, string fileName)
     {

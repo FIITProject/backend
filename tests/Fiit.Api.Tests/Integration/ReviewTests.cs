@@ -20,7 +20,7 @@ public class ReviewTests(ApiFactory factory)
         var (tgId, studentId) = await Scenario.ApprovedStudentAsync(lead, bot, invite, course.Id);
         var hw = await Scenario.PublishedHomeworkAsync(lead, Scenario.Homework(subject.Id, [course.Id]));
         await Scenario.SubmitAsync(bot, tgId, hw.Id);
-        await Scenario.DrainAsync(bot, 0);
+        await Scenario.DrainAsync(bot, tgId);
 
         var context = await lead.Get<ReviewContextDto>($"/api/homeworks/{hw.Id}/students/{studentId}/review");
         var submissionId = context.Submissions.Single().Id;

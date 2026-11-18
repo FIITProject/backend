@@ -169,7 +169,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<Notification>(e =>
         {
             e.HasOne<Student>().WithMany().HasForeignKey(x => x.StudentId);
-            e.HasIndex(x => new { x.Status, x.AvailableAt });
+            // Публикатор outbox выбирает Pending по порядку id
+            e.HasIndex(x => x.Id).HasFilter("status = 'Pending'").HasDatabaseName("ix_notifications_pending");
+            e.HasIndex(x => new { x.StudentId, x.Id });
         });
     }
 }

@@ -30,6 +30,22 @@ services:
     volumes:
       - s3-data:/data
 
+  # Очередь уведомлений: API публикует из outbox, бот доставляет в Telegram. Веб-интерфейс — http://localhost:15672 (fiit/fiit)
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: fiit
+      RABBITMQ_DEFAULT_PASS: fiit
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      retries: 30
+
   # Отдельный шаг деплоя: применить миграции тем же образом и выйти. API стартует только после успеха.
   migrate:
     build: .
@@ -49,6 +65,8 @@ services:
         condition: service_completed_successfully
       s3:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     restart: on-failure
     environment:
       ConnectionStrings__Db: Host=db;Database=fiit;Username=fiit;Password=fiit
@@ -60,6 +78,7 @@ services:
       Storage__SecretKey: fiit-minio-secret
       Storage__Bucket: fiit-homeworks
       Storage__CreateBucket: "true"
+      RabbitMq__Uri: amqp://fiit:fiit@rabbitmq:5672/
       ClamAv__Enabled: "true"
       ClamAv__Host: clamav
     ports:
@@ -85,3 +104,4 @@ volumes:
   db-data:
   s3-data:
   clamav-data:
+  rabbitmq-data:

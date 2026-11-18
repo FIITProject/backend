@@ -4,6 +4,7 @@ using Fiit.Api;
 using Fiit.Api.Auth;
 using Fiit.Api.Data;
 using Fiit.Api.Services;
+using Fiit.Messaging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
@@ -31,6 +32,9 @@ builder.Services.AddScoped<StudentFactsLoader>();
 builder.Services.AddScoped<Notifier>();
 builder.Services.AddScoped<HomeworkStats>();
 builder.Services.AddScoped<SubmissionFileGuard>();
+builder.Services.AddOptions<RabbitMqOptions>().BindConfiguration(RabbitMqOptions.Section);
+if (builder.Configuration.GetSection(RabbitMqOptions.Section).Get<RabbitMqOptions>()?.Enabled == true)
+    builder.Services.AddHostedService<NotificationOutboxPublisher>();
 builder.Services.AddOptions<ClamAvOptions>().BindConfiguration(ClamAvOptions.Section);
 if (builder.Configuration.GetValue<bool>($"{ClamAvOptions.Section}:Enabled"))
     builder.Services.AddSingleton<IMalwareScanner, ClamAvScanner>();

@@ -5,7 +5,7 @@ using Fiit.Contracts;
 
 namespace Fiit.Api.Services;
 
-/// <summary>Кладёт уведомления студентам в outbox (сохраняет вызывающий, в той же транзакции). Тексты — из ТЗ, раздел 4.</summary>
+/// <summary>Кладёт уведомления студентам в outbox (сохраняет вызывающий, в той же транзакции). Тексты — из ТЗ, раздел 4. Дальше их забирает <see cref="NotificationOutboxPublisher"/>.</summary>
 public class Notifier(AppDbContext db, TimeProvider time)
 {
     public void ApplicationApproved(int studentId, Course course) =>
@@ -53,7 +53,6 @@ public class Notifier(AppDbContext db, TimeProvider time)
             FileName = fileKey is null ? null : fileName,
             Status = NotificationStatus.Pending,
             CreatedAt = now,
-            AvailableAt = now,
         });
     }
 

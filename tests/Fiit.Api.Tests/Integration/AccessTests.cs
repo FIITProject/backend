@@ -93,7 +93,8 @@ public class AccessTests(ApiFactory factory)
         Assert.Equal(HttpStatusCode.Conflict, narrower.StatusCode);
 
         // Расширили до всех — новый адресат получает уведомление о ДЗ, старый — нет
-        await Scenario.DrainAsync(bot, 0);
+        await Scenario.DrainAsync(bot, tg1);
+        await Scenario.DrainAsync(bot, tg2);
         await teacher.Put($"/api/homeworks/{hw.Id}", request with { Targets = [] }).Ok<HomeworkDto>();
         Assert.Equal(NotificationKind.HomeworkPublished, (await Scenario.DrainAsync(bot, tg1)).Single().Kind);
         Assert.Single((await bot.Get<BotHomeworksDto>($"/api/bot/students/{tg1}/homeworks")).Active);
@@ -170,7 +171,8 @@ public class AccessTests(ApiFactory factory)
         await Scenario.ApplyAsync(bot, pendingTg, invite, course.Id, "Ждущий");
         var hw = await Scenario.PublishedHomeworkAsync(teacher, Scenario.Homework(subject.Id, [course.Id]));
         var submitted = await Scenario.SubmitAsync(bot, tgId, hw.Id);
-        await Scenario.DrainAsync(bot, 0);
+        await Scenario.DrainAsync(bot, tgId);
+        await Scenario.DrainAsync(bot, pendingTg);
 
         await teacher.Post("/api/courses/archive", new CourseIdsRequest([course.Id])).Ok();
 

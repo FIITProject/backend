@@ -53,18 +53,15 @@ public static class Scenario
         return await bot.PostAsync($"/api/bot/students/{tgId}/homeworks/{homeworkId}/submissions", content).Ok<BotSubmitResponse>();
     }
 
-    /// <summary>Как бот: забрать всё из очереди и подтвердить; вернуть то, что адресовано студенту.</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<long, int> SeenNotification = new();
+
+    /// <summary>Новые уведомления студента с прошлого вызова (из outbox — в тестах это то же, что дошло бы до бота).</summary>
     public static async Task<List<BotNotificationDto>> DrainAsync(HttpClient bot, long tgId)
     {
-        var mine = new List<BotNotificationDto>();
-        while (true)
-        {
-            var batch = await bot.Post("/api/bot/notifications/claim", new ClaimRequest(100)).Ok<BotNotificationDto[]>();
-            if (batch.Length == 0)
-                return mine;
-            foreach (var n in batch)
-                await bot.PostAsync($"/api/bot/notifications/{n.Id}/ack", null).Ok();
-            mine.AddRange(batch.Where(n => n.TelegramUserId == tgId));
-        }
+        var after = SeenNotification.GetValueOrDefault(tgId);
+        var list = await bot.Get<BotNotificationDto[]>($"/api/bot/students/{tgId}/notifications?afterId={after}");
+        if (list.Length > 0)
+            SeenNotification[tgId] = list[^1].Id;
+        return list.ToList();
     }
 }

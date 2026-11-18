@@ -1,6 +1,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY src/Fiit.Contracts/Fiit.Contracts.csproj src/Fiit.Contracts/
+COPY src/Fiit.Messaging/Fiit.Messaging.csproj src/Fiit.Messaging/
 COPY src/Fiit.Api/Fiit.Api.csproj src/Fiit.Api/
 RUN dotnet restore src/Fiit.Api/Fiit.Api.csproj
 COPY src/ src/
