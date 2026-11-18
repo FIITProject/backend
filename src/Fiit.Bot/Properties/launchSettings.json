@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Fiit.Bot": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

@@ -69,6 +69,6 @@ Submission(id, homework_id, student_id, version, file_key, file_name, file_size,
 Review(id, submission_id unique, updated_by_id, sent_by_id?, annotations jsonb, comment, total_override?, updated_at, draft_hash,
        sent_at?, sent_hash, sent_total, sent_comment, sent_subtasks jsonb, sent_file_key)       -- снапшот отправленного
 SubtaskScore(review_id, subtask_id, score)
-Notification(id, student_id, kind, text, homework_id?, file_key?, file_name?, status, attempts, available_at, locked_until?, sent_at?, last_error)
+Notification(id, student_id, kind, text, homework_id?, file_key?, file_name?, status, created_at, published_at?, delivered_at?, last_error)  -- outbox; доставка через RabbitMQ
 ```
 Статус ячейки сводной таблицы = последняя версия Submission + её Review: не сдано / на проверке / проверено (+ отправлено ли студенту), флаг опоздания.
