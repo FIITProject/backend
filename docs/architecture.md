@@ -26,13 +26,16 @@
 | `src/Fiit.Messaging` | топология RabbitMQ (обменник, очереди, повторы) и формат сообщения — общие для api и бота |
 | `src/Fiit.Bot.Core` | диалог бота (сценарии раздела 4 ТЗ) и клиент `/api/bot/*`; не знает про Telegram |
 | `src/Fiit.Bot` | Telegram-бот: long polling, отправка сообщений, потребитель очереди уведомлений |
-| `web/` | сайт преподавателя на React + эмулятор бота. **Сейчас** там временный тестовый сайт на Blazor WebAssembly (`web/Fiit.Web`) — будет заменён на React |
+| `web/app` | сайт преподавателя на React (Vite + TypeScript), вёрстка — дизайн FIITProject/frontend (`fiit-design`) один в один |
+| `web/Fiit.Web` | старый тестовый сайт на Blazor — остался ради эмулятора бота (`web-blazor`, порт 8081), будет удалён |
 | `tests/Fiit.Api.Tests` | юнит-тесты правил и проверки PDF, интеграционные тесты сценариев на Postgres + S3 + RabbitMQ (Testcontainers) |
 | `tests/Fiit.Bot.Tests` | сценарии диалога, доставка уведомлений и повторы |
 
 Эмулятор бота на сайте использует тот же `Fiit.Bot.Core.Dialog`, что и настоящий бот, — сценарии проверяются без Telegram. Уведомления эмулятор читает из outbox (`/api/bot/students/{tgId}/notifications`), а не из RabbitMQ.
 
-**Фронт — React** (SPA: React + TypeScript, сборка Vite, роутинг на клиенте), раздаётся nginx как статика, в API ходит по тому же origin через прокси `/api` — без CORS. Типы запросов и ответов — TypeScript-зеркало `Fiit.Contracts` (вручную или генерацией из OpenAPI бэкенда). Бэкенду всё равно, какой фронт: API от замены Blazor на React не меняется.
+**Фронт — React** (`web/app`: React 19 + TypeScript, Vite, react-router), раздаётся nginx как статика, в API ходит по тому же origin через прокси `/api` — без CORS. Типы — TypeScript-зеркало `Fiit.Contracts` (`src/api/types.ts`).
+
+Вёрстка перенесена из дизайна (FIITProject/frontend, `fiit-design`) без изменений: CSS дизайна лежит в `src/styles` как есть, разметка страниц — те же классы. CSS страниц дизайна пересекаются, поэтому стиль страницы подключается только пока она открыта (`PageStyle`, импорт `?inline`). «Курс» в интерфейсе — предмет в семестре со всеми подгруппами (маршрут `/c/:subjectId/:semester`), в API это несколько `CourseDto`. Код задания (ДЗ-3, ДР-1, Г-2) — начало названия: тип выбирается переключателем, номер присваивается по уже существующим заданиям курса; набор типов хранится в браузере преподавателя. Настройки колокольчика (заявки, работы на проверку, пересдачи, просрочки) — тоже в браузере.
 
 ## Решения
 
@@ -105,10 +108,10 @@
 | POST | `/tags/{id}/students`, `/tags/{id}/students/remove` | `{studentIds[]}` |
 | GET | `/homeworks?subjectId=&semesterYear=&semesterTerm=` | ДЗ своих курсов |
 | GET/POST, PUT/DELETE `{id}` | `/homeworks` | `{subjectId, semester, title, link, deadline, subtasks[], courseIds[], targets[], notifyStudents}` |
-| POST | `/homeworks/{id}/publish` | публикация + уведомления адресатам |
+| POST | `/homeworks/{id}/publish?notify=` | публикация; `notify=false` — без рассылки в бот (ДЗ просто появится в «Моих заданиях») |
 | POST | `/homeworks/preview-recipients` | `{courseIds[], targets[]}` → число адресатов |
-| GET | `/gradebook?subjectId=&semesterYear=&semesterTerm=&courseIds=&group=&tagId=` | сводная таблица |
-| GET | `/gradebook/export.xlsx?...` | экспорт в Excel |
+| GET | `/gradebook?subjectId=&semesterYear=&semesterTerm=&courseIds=&group=&tagId=&homeworkId=` | сводная таблица (`homeworkId` — один столбец, для страницы задания); в ячейке — статус, оценка, версии, кто проверил, когда сдано |
+| GET | `/gradebook/export.xlsx?...` | экспорт в Excel с теми же фильтрами |
 | GET | `/homeworks/{hwId}/students/{studentId}/review` | экран проверки: версии, проверки, подзадачи |
 | GET | `/submissions/{id}/file`, `/submissions/{id}/reviewed-file` | оригинал / отправленный PDF с пометками |
 | PUT | `/submissions/{id}/review` | черновик `{annotations, comment, subtaskScores[], totalOverride?, baseUpdatedAt?}` (только последняя версия) |

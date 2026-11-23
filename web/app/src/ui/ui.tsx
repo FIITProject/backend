@@ -103,7 +103,7 @@ export function useAction() {
 // ── Модальное окно (разметка modal.css дизайна) ──────────────────────
 
 export function Modal({ open, title, onClose, children, actions, size }: {
-  open: boolean; title: ReactNode; onClose: () => void; children?: ReactNode; actions?: ReactNode; size?: 'lg';
+  open: boolean; title: ReactNode; onClose: () => void; children?: ReactNode; actions?: ReactNode; size?: 'lg' | 'narrow' | 'wide';
 }) {
   useEffect(() => {
     if (!open) return;
@@ -132,7 +132,7 @@ export function useConfirm() {
     new Promise<boolean>(resolve => setState({ ok: 'Подтвердить', ...o, resolve })), []);
   const close = (v: boolean) => { state?.resolve(v); setState(null); };
   const dialog = (
-    <Modal open={!!state} title={state?.title} onClose={() => close(false)}
+    <Modal open={!!state} title={state?.title} onClose={() => close(false)} size="narrow"
       actions={<>
         <button className="btn-outline" type="button" onClick={() => close(false)}>Отмена</button>
         <button className={state?.danger ? 'btn-primary btn-danger-soft' : 'btn-primary'} type="button" onClick={() => close(true)}>{state?.ok}</button>

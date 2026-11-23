@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { RequireAuth, SessionProvider } from './auth/session';
 import { CourseLayout } from './course/CourseLayout';
@@ -12,7 +13,6 @@ import Login from './pages/Login';
 import NewCourse from './pages/NewCourse';
 import NewInvitation from './pages/NewInvitation';
 import Profile from './pages/Profile';
-import Review from './pages/Review';
 import Settings from './pages/Settings';
 import StudentApplications from './pages/StudentApplications';
 import Students from './pages/Students';
@@ -20,7 +20,10 @@ import Summary from './pages/Summary';
 import TaskEdit from './pages/TaskEdit';
 import TaskPage from './pages/TaskPage';
 import Teachers from './pages/Teachers';
-import { ToastProvider } from './ui/ui';
+import { Loading, ToastProvider } from './ui/ui';
+
+// Проверка тянет pdf.js — грузим её отдельным чанком, только когда открывают работу
+const Review = lazy(() => import('./pages/Review'));
 
 /**
  * Маршруты ↔ страницы дизайна fiit-design:
@@ -37,7 +40,7 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/review/:homeworkId/:studentId" element={<RequireAuth><Review /></RequireAuth>} />
+            <Route path="/review/:homeworkId/:studentId" element={<RequireAuth><Suspense fallback={<Loading />}><Review /></Suspense></RequireAuth>} />
             <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
               <Route index element={<Dashboard />} />
               <Route path="courses" element={<Courses />} />

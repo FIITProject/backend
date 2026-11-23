@@ -62,7 +62,13 @@ export function plural(n: number, one: string, few: string, many: string): strin
 export const points = (n: number) => `${score(n)} ${plural(Math.floor(n) === n ? n : 2, 'балл', 'балла', 'баллов')}`;
 
 export const termName = (t: SemesterTerm) => (t === 'Autumn' ? 'осень' : 'весна');
-export const semesterName = (s: SemesterDto) => `${s.year} ${termName(s.term)}`;
+/** «Осень 2026» — как в дизайне. */
+export const semesterName = (s: SemesterDto) => `${s.term === 'Autumn' ? 'Осень' : 'Весна'} ${s.year}`;
+/** Учебный год семестра: осень 2026 и весна 2027 → «2026/27» (плашка в шапке курса). */
+export const academicYear = (s: SemesterDto) => {
+  const start = s.term === 'Autumn' ? s.year : s.year - 1;
+  return `${start}/${String(start + 1).slice(-2)}`;
+};
 export const semesterKey = (s: SemesterDto) => `${s.year}-${s.term}`;
 export const sameSemester = (a: SemesterDto, b: SemesterDto) => a.year === b.year && a.term === b.term;
 

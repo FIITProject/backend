@@ -1,7 +1,9 @@
 import { createContext, Fragment, useContext, useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
-import { useMe, useSession } from '../auth/session';
-import { loadOverview } from '../lib/courses';
+import { useMe } from '../auth/session';
+import { api } from '../api/api';
+import { loadOverview, subjectCoursePath } from '../lib/courses';
+import { getNotifyPrefs, onNotifyPrefsChange } from '../lib/notifyPrefs';
 import { initials } from '../lib/format';
 import { IconArchive, IconBell, IconCollapse, IconCourses, IconCrumbSep, IconOverview } from '../ui/icons';
 
@@ -29,13 +31,15 @@ const MENU_KEY = 'fiit-hometask:menu';
 /** Каркас страниц приложения из дизайна: боковое меню, верхняя панель, контент. */
 export function AppLayout() {
   const me = useMe();
-  const { logout } = useSession();
   const location = useLocation();
   const [crumbs, setCrumbs] = useState<Crumb[]>([]);
   const [collapsed, setCollapsed] = useState(() => document.documentElement.classList.contains('menu-collapsed'));
   const [notifOpen, setNotifOpen] = useState(false);
   const [counters, setCounters] = useState({ pending: 0, toReview: 0 });
+  const [extra, setExtra] = useState<{ to: string; text: string }[]>([]);
+  const [prefs, setPrefs] = useState(getNotifyPrefs);
   const [tick, setTick] = useState(0);
+  useEffect(() => onNotifyPrefsChange(() => setPrefs(getNotifyPrefs())), []);
 
   useEffect(() => {
     document.documentElement.classList.toggle('menu-collapsed', collapsed);
@@ -45,9 +49,30 @@ export function AppLayout() {
   // Счётчики пересчитываются при переходах и по запросу страниц
   useEffect(() => {
     let alive = true;
-    loadOverview().then(o => alive && setCounters({ pending: o.pending, toReview: o.toReview })).catch(() => {});
+    loadOverview().then(async o => {
+      if (!alive) return;
+      setCounters({ pending: o.pending, toReview: o.toReview });
+      // Пересдачи и просрочки видны только в сводной таблице — грузим её, только если эти уведомления включены
+      if (!prefs.resubmissions && !prefs.overdue) {
+        setExtra([]);
+        return;
+      }
+      const books = await Promise.all(o.courses.map(c => api.gradebook(c.subjectId, c.semester)));
+      if (!alive) return;
+      const notices: { to: string; text: string }[] = [];
+      o.courses.forEach((c, i) => {
+        const cells = books[i].rows.flatMap(r => r.cells);
+        const resubmits = cells.filter(x => x.status === 'OnReview' && x.versions > 1).length;
+        const overdue = cells.filter(x => x.status === 'Overdue').length;
+        if (prefs.resubmissions && resubmits > 0)
+          notices.push({ to: `${subjectCoursePath(c)}/summary`, text: `${c.subjectName}: пересдач на проверке — ${resubmits}` });
+        if (prefs.overdue && overdue > 0)
+          notices.push({ to: `${subjectCoursePath(c)}/summary`, text: `${c.subjectName}: просрочено сдач — ${overdue}` });
+      });
+      setExtra(notices);
+    }).catch(() => {});
     return () => { alive = false; };
-  }, [location.pathname, tick]);
+  }, [location.pathname, tick, prefs]);
 
   useEffect(() => setNotifOpen(false), [location.pathname]);
   useEffect(() => {
@@ -60,8 +85,9 @@ export function AppLayout() {
   }, [notifOpen]);
 
   const notices = [
-    counters.pending > 0 && { to: '/courses?filter=pending', text: `Новые заявки на вступление в курс: ${counters.pending}` },
-    counters.toReview > 0 && { to: '/courses?filter=review', text: `Работ ждут проверки: ${counters.toReview}` },
+    prefs.applications && counters.pending > 0 && { to: '/courses?filter=pending', text: 'Появились новые заявки на вступление в курс!' },
+    prefs.reviews && counters.toReview > 0 && { to: '/courses?filter=review', text: counters.toReview === 1 ? 'Новая работа готова к проверке!' : `Работ ждут проверки: ${counters.toReview}` },
+    ...extra,
   ].filter(Boolean) as { to: string; text: string }[];
   const label = collapsed ? 'Развернуть меню' : 'Свернуть меню';
   const navClass = ({ isActive }: { isActive: boolean }) => `nav-link${isActive ? ' is-active' : ''}`;
@@ -113,7 +139,7 @@ export function AppLayout() {
                       : (
                         <ul className="notifications__list">
                           {notices.map(n => (
-                            <li key={n.to}><Link className="notifications__item" to={n.to}><span className="notifications__dot" />{n.text}</Link></li>
+                            <li key={n.text}><Link className="notifications__item" to={n.to}><span className="notifications__dot" />{n.text}</Link></li>
                           ))}
                         </ul>
                       )}
@@ -124,10 +150,9 @@ export function AppLayout() {
                   <span className="avatar">{initials(me.fullName)}</span>
                   <span className="profile-chip__text">
                     <b>{me.fullName.split(' ').slice(0, 2).join(' ')}</b>
-                    <span>@{me.login}</span>
+                    <span>Преподаватель</span>
                   </span>
                 </Link>
-                <button className="btn-outline btn-sm" onClick={logout} type="button" title="Выйти">Выйти</button>
               </div>
             </header>
             <Outlet />

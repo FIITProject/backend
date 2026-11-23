@@ -63,14 +63,15 @@ export const api = {
   createHomework: (r: HomeworkEditRequest) => post<HomeworkDto>('/homeworks', r),
   updateHomework: (id: number, r: HomeworkEditRequest) => put<HomeworkDto>(`/homeworks/${id}`, r),
   deleteHomework: (id: number) => del(`/homeworks/${id}`),
-  publishHomework: (id: number) => post<PublishResponse>(`/homeworks/${id}/publish`),
+  /** notify=false — опубликовать без рассылки в бот. */
+  publishHomework: (id: number, notify = true) => post<PublishResponse>(`/homeworks/${id}/publish${notify ? '' : '?notify=false'}`),
   previewRecipients: (courseIds: number[], targets: HomeworkTargetDto[]) =>
     post<RecipientsPreviewResponse>('/homeworks/preview-recipients', { courseIds, targets }),
 
   // Сводная таблица
-  gradebook: (subjectId: number, semester: SemesterDto, filter: { courseIds?: number[]; group?: string; tagId?: number } = {}) =>
+  gradebook: (subjectId: number, semester: SemesterDto, filter: { courseIds?: number[]; group?: string; tagId?: number; homeworkId?: number } = {}) =>
     get<GradebookDto>('/gradebook', { subjectId, ...sem(semester), ...filter }),
-  exportGradebook: (subjectId: number, semester: SemesterDto, filter: { courseIds?: number[]; group?: string; tagId?: number } = {}) =>
+  exportGradebook: (subjectId: number, semester: SemesterDto, filter: { courseIds?: number[]; group?: string; tagId?: number; homeworkId?: number } = {}) =>
     download('/gradebook/export.xlsx', { subjectId, ...sem(semester), ...filter }),
 
   // Проверка

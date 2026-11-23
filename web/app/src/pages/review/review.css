@@ -1,0 +1,118 @@
+/* Дополнения к pages/performance-check.css: настоящий PDF вместо картинки-заглушки и слой пометок.
+   Масштаб страницы под окно — как fit-viewport.js дизайна (useFitViewport в Review.tsx); высота .app задаётся там же,
+   чтобы длинный PDF прокручивался внутри листа, а не растягивал страницу. */
+
+.review-page .review-main {
+  min-height: 0;
+}
+
+.review-page .review-tools {
+  overflow-y: auto;
+}
+
+.review-page .review-aside {
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.review-page .review-center {
+  min-width: 0;
+  min-height: 0;
+}
+
+.review-page .work-paper-box {
+  min-height: 0;
+  overflow: auto;
+}
+
+.review-page .review-header .segmented {
+  width: auto;
+  min-width: 130px;
+}
+
+.review-page .segmented > [role="tab"] {
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.review-page .btn-outline:disabled,
+.review-page .btn-primary:disabled,
+.review-page .tool-btn:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+.review-page .input.is-error {
+  border-color: var(--c-e5484d);
+}
+
+.review-page .link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 700;
+  color: var(--brand-alt-strong);
+  cursor: pointer;
+}
+
+.review-page .review-meta {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.pdf-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-width: min-content;
+}
+
+.pdf-page {
+  position: relative;
+  flex: none;
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(36, 26, 74, .12);
+}
+
+.pdf-page canvas {
+  display: block;
+}
+
+.pdf-overlay {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+
+.pdf-pages[data-tool="pen"] .pdf-overlay,
+.pdf-pages[data-tool="marker"] .pdf-overlay {
+  cursor: crosshair;
+}
+
+.pdf-pages[data-tool="text"] .pdf-overlay {
+  cursor: text;
+}
+
+.pdf-pages[data-tool="eraser"] .pdf-overlay {
+  cursor: cell;
+}
+
+.pdf-pages[data-tool="none"] .pdf-overlay {
+  touch-action: auto;
+}
+
+.pdf-text-editor {
+  position: absolute;
+  z-index: 2;
+  min-width: 200px;
+  min-height: 2.6em;
+  padding: 0;
+  border: 1.5px dashed var(--brand-alt);
+  background: rgba(255, 255, 255, .9);
+  font-family: "DejaVu Sans", Arial, sans-serif;
+  line-height: 1.2;
+  outline: none;
+  resize: both;
+}

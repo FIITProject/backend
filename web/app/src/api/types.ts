@@ -60,6 +60,7 @@ export interface GradebookRow {
 }
 export interface GradebookCell {
   homeworkId: number; status: CellStatus; score: number | null; isLate: boolean; versions: number; latestSubmissionId: number | null; reviewedBy: string | null;
+  submittedAt: string | null;
 }
 export interface ReviewContextDto {
   homeworkId: number; homeworkTitle: string; homeworkLink: string; deadline: string; subtasks: SubtaskDto[];

@@ -26,7 +26,7 @@ export default function ChangePassword() {
   const [empty, setEmpty] = useState(false);
   const [invalid, setInvalid] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  useCrumbs([{ label: 'Профиль', to: '/profile' }, { label: 'Смена пароля' }]);
+  useCrumbs([{ label: 'Курсы', to: '/courses' }, { label: 'Профиль', to: '/profile' }, { label: 'Смена пароля' }]);
 
   const met = [...rules.map(r => r.test(pw)), pw !== '' && pw === rep];
   const ok = met.every(Boolean);

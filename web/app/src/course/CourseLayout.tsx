@@ -1,9 +1,9 @@
-import { createContext, useContext } from 'react';
-import { Link, NavLink, Outlet, useParams } from 'react-router';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { Link, NavLink, Outlet, useLocation, useParams } from 'react-router';
 import { api } from '../api/api';
 import type { CourseDto, SemesterDto } from '../api/types';
 import { groupCourses, subjectCoursePath, type SubjectCourse } from '../lib/courses';
-import { parseSemesterKey, plural, semesterName } from '../lib/format';
+import { academicYear, parseSemesterKey, plural } from '../lib/format';
 import { Alert, Loading, useLoad } from '../ui/ui';
 
 interface CourseContext {
@@ -25,6 +25,20 @@ const Ctx = createContext<CourseContext>(null!);
 /** Данные курса для вкладок внутри CourseLayout. */
 export const useCourse = () => useContext(Ctx);
 
+const HeroActionCtx = createContext<(node: ReactNode) => void>(() => {});
+
+/**
+ * Кнопка справа в шапке курса — в дизайне у каждой вкладки своя («+ Создать задание», «Экспорт…», «Создать приглашение»).
+ * useHeroAction(<Link className="btn-dark" …>…</Link>, [deps]).
+ */
+export function useHeroAction(node: ReactNode, deps: unknown[] = []) {
+  const set = useContext(HeroActionCtx);
+  useEffect(() => {
+    set(node);
+    return () => set(null);
+  }, deps); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 const tabs = [
   { to: '', label: 'Задания', end: true },
   { to: 'summary', label: 'Сводная' },
@@ -37,6 +51,8 @@ const tabs = [
 /** Шапка курса (hero) с вкладками из дизайна; вкладки — вложенные маршруты. */
 export function CourseLayout() {
   const params = useParams();
+  const location = useLocation();
+  const [heroAction, setHeroAction] = useState<ReactNode>(null);
   const subjectId = Number(params.subjectId);
   const semester = parseSemesterKey(params.semester);
   const state = useLoad(async () => {
@@ -57,21 +73,24 @@ export function CourseLayout() {
   const activeCourses = course.courses.filter(c => !c.isArchived);
   const path = subjectCoursePath(course);
   const groups = new Set(course.courses.map(c => c.groupName)).size;
+  // Создание/страница задания и новое приглашение в дизайне — без шапки курса
+  const showHero = !/\/(tasks\/|invites\/new)/.test(location.pathname);
   return (
     <Ctx.Provider value={{ course, subjectId, semester, activeCourses, readOnly: activeCourses.length === 0, reload: state.reload, path }}>
-      <div className="hero p-26-32 min-h-170 d-flex flex-col">
+     <HeroActionCtx.Provider value={setHeroAction}>
+      {showHero && <div className="hero p-26-32 min-h-170 d-flex flex-col">
         <div className="row">
           <div>
             <h1 className="text-on-brand fs-30">{course.subjectName}</h1>
             <div className="row gap-8 mt-10">
-              <span className="pill">{semesterName(course.semester)}</span>
+              <span className="pill">{academicYear(course.semester)}</span>
               <span className="pill">{groups} {plural(groups, 'группа', 'группы', 'групп')}</span>
               <span className="pill">{course.students} {plural(course.students, 'студент', 'студента', 'студентов')}</span>
               {course.isArchived && <span className="pill">в архиве</span>}
             </div>
           </div>
           <span className="spacer" />
-          {activeCourses.length > 0 && <Link className="btn-dark" to={`${path}/tasks/new`}>+ Создать задание</Link>}
+          {heroAction}
         </div>
         <nav aria-label="Разделы курса" className="row gap-8 mt-auto course-tabs">
           {tabs.map(t => (
@@ -83,8 +102,9 @@ export function CourseLayout() {
             </NavLink>
           ))}
         </nav>
-      </div>
+      </div>}
       <Outlet />
+     </HeroActionCtx.Provider>
     </Ctx.Provider>
   );
 }
