@@ -10,7 +10,7 @@ import { IconDoc } from '../ui/icons';
 import { PageStyle } from '../ui/PageStyle';
 import { Async, Empty, useLoad } from '../ui/ui';
 import {
-  codePrefixes, FilterMenu, IconChevronUp, IconEdit, IconFilter, IconGo, maxPoints, parseTitle, passes, pointsText, tagClass,
+  codePrefixes, FilterMenu, IconChevronUp, IconEdit, IconFilter, IconGo, parseTitle, passes, pointsText, tagClass,
 } from './tasks/taskCommon';
 
 const NO_CODE = '';
@@ -73,7 +73,7 @@ function TaskLists({ homeworks, path }: { homeworks: HomeworkDto[]; path: string
               {drafts.length === 0 && <div className="row p-12-24 gap-14 row--x1 text-muted">Черновиков нет</div>}
               {drafts.map(h => {
                 const t = parseTitle(h.title);
-                const points = maxPoints(h.subtasks);
+                const points = h.maxScore;
                 return (
                   <div className="row p-12-24 gap-14 row--x1" key={h.id}>
                     {t.code && <span className={tagClass(t.prefix, prefixes)}>{t.code}</span>}
@@ -120,7 +120,7 @@ function TaskLists({ homeworks, path }: { homeworks: HomeworkDto[]; path: string
               <tbody>
                 {rows.map(h => {
                   const t = parseTitle(h.title);
-                  const points = maxPoints(h.subtasks);
+                  const points = h.maxScore;
                   return (
                     <tr key={h.id}>
                       <td>{t.code ? <span className={tagClass(t.prefix, prefixes)}>{t.code}</span> : <span className="text-muted">—</span>}</td>

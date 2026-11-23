@@ -14,6 +14,7 @@ public record SubtaskDto(int? Id, string Title, decimal? MaxScore);
 /// <summary>
 /// Создание/изменение ДЗ. Targets пустой — ДЗ выдано всем студентам курсов.
 /// NotifyStudents — после публикации разослать уведомление об изменении дедлайна/подзадач.
+/// MaxScore — максимальный балл без подзадач; если у подзадач есть баллы, он не нужен — максимум считается как их сумма.
 /// </summary>
 public record HomeworkEditRequest(
     int SubjectId,
@@ -24,7 +25,8 @@ public record HomeworkEditRequest(
     SubtaskDto[] Subtasks,
     int[] CourseIds,
     HomeworkTargetDto[] Targets,
-    bool NotifyStudents = true);
+    bool NotifyStudents = true,
+    decimal? MaxScore = null);
 
 public record HomeworkDto(
     int Id,
@@ -44,7 +46,8 @@ public record HomeworkDto(
     int SubmittedCount,
     int ReviewedCount,
     bool SubtasksLocked,
-    bool IsReadOnly);
+    bool IsReadOnly,
+    decimal? MaxScore = null);
 
 public record RecipientsPreviewRequest(int[] CourseIds, HomeworkTargetDto[] Targets);
 

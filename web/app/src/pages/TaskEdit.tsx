@@ -22,6 +22,7 @@ const ownCss = `
   .group-chip[aria-disabled="true"] { cursor: default; opacity: .7; }
   .switch[aria-disabled="true"] { opacity: .6; }
   .input:disabled { opacity: .7; }
+  .input.is-error { border-color: var(--c-e5484d); }
   .link-button { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; font: inherit; cursor: pointer; }
 }`;
 
@@ -125,7 +126,12 @@ function Editor({ hw }: { hw: HomeworkDto | null }) {
   const [subtasksOpen, setSubtasksOpen] = useState(false);
   const [incomplete, setIncomplete] = useState<string[] | null>(null);
 
-  const total = maxPoints(subtasks);
+  // Макс. балл: сумма баллов подзадач, если они есть; иначе вводится вручную
+  const [manualMax, setManualMax] = useState(hw && maxPoints(hw.subtasks) === null && hw.maxScore !== null ? String(hw.maxScore).replace('.', ',') : '');
+  const subtasksMax = maxPoints(subtasks);
+  const manualValue = parsePoints(manualMax);
+  const manualInvalid = manualValue !== null && (Number.isNaN(manualValue) || manualValue <= 0 || manualValue > 1000);
+  const total = subtasksMax ?? (manualValue !== null && !manualInvalid ? manualValue : null);
   const deadlineIso = fromInput(deadline);
   const deadlineChanged = published && deadlineIso !== null && Date.parse(deadlineIso) !== Date.parse(hw!.deadline);
   const subtasksChanged = published && !sameSubtasks(subtasks, hw!.subtasks);
@@ -198,10 +204,12 @@ function Editor({ hw }: { hw: HomeworkDto | null }) {
   function request(): HomeworkEditRequest | null {
     if (!deadlineIso) { toast('Укажите дедлайн', { error: true }); return null; }
     if (!courseIds.length) { toast('Выберите хотя бы одну подгруппу', { error: true }); return null; }
+    if (subtasksMax === null && manualInvalid) { toast('Макс. балл — число больше 0 и не больше 1000', { error: true }); return null; }
     return {
       subjectId, semester, title: title.trim(), link: link.trim(), deadline: deadlineIso,
       subtasks: subtasks.map(s => ({ id: s.id, title: s.title.trim(), maxScore: s.maxScore })),
       courseIds, targets: sentTargets, notifyStudents: notify,
+      maxScore: subtasksMax === null && manualValue !== null && !manualInvalid ? manualValue : null,
     };
   }
 
@@ -261,9 +269,7 @@ function Editor({ hw }: { hw: HomeworkDto | null }) {
 
   // ── Предпросмотр ──
   const deadlineLabel = deadlineIso ? shortDateTime(deadlineIso).replace(' ', ' в ') : '';
-  const pointsHint = () => toast(total !== null
-    ? `Макс. балл равен сумме баллов подзадач (${String(total).replace('.', ',')}). Чтобы изменить его, измените баллы подзадач.`
-    : 'Макс. балл — сумма баллов подзадач. Чтобы задать его, добавьте подзадачи с баллами.');
+  const pointsHint = () => toast(`Макс. балл равен сумме баллов подзадач (${String(subtasksMax).replace('.', ',')}). Чтобы изменить его, измените баллы подзадач.`);
 
   if (!hw && courseReadOnly) return <Alert>Курс в архиве — создавать задания нельзя.</Alert>;
 
@@ -316,8 +322,10 @@ function Editor({ hw }: { hw: HomeworkDto | null }) {
                 <input className="input rounded-999" disabled={ro} onChange={e => setDeadline(e.target.value)} type="datetime-local" value={deadline} />
               </label>
               <label className="w-110">Макс. балл
-                <input className="input rounded-30" disabled={ro} inputMode="numeric" onChange={pointsHint} placeholder="—"
-                  value={total === null ? '' : String(total).replace('.', ',')} />
+                {subtasksMax !== null
+                  ? <input className="input rounded-30" disabled={ro} inputMode="numeric" onChange={pointsHint} value={String(subtasksMax).replace('.', ',')} />
+                  : <input className={`input rounded-30${manualInvalid ? ' is-error' : ''}`} disabled={ro} inputMode="decimal" onChange={e => setManualMax(e.target.value)}
+                      placeholder="10" title={manualInvalid ? 'Больше 0 и не больше 1000' : undefined} value={manualMax} />}
               </label>
             </div>
             {!ro && (
@@ -443,8 +451,8 @@ function Editor({ hw }: { hw: HomeworkDto | null }) {
 
       {subtasksOpen && (
         <SubtasksDialog initial={subtasks} onClose={() => setSubtasksOpen(false)} onSave={next => {
-          const before = maxPoints(subtasks);
-          const after = maxPoints(next);
+          const before = total;
+          const after = maxPoints(next) ?? (manualValue !== null && !manualInvalid ? manualValue : null);
           setSubtasks(next);
           setSubtasksOpen(false);
           if (before !== null && before !== after) toast('Максимальный балл был изменён!');

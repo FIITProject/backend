@@ -58,6 +58,7 @@ public class HomeworksController(
         };
         ApplyFields(hw, request);
         hw.Subtasks = ValidSubtasks(request.Subtasks).Select((s, i) => new Subtask { Title = s.Title, MaxScore = s.MaxScore, Order = i }).ToList();
+        ApplyMaxScore(hw, request.MaxScore);
         hw.Targets = await ValidTargetsAsync(request.Targets, courses, null, ct);
         db.Homeworks.Add(hw);
         await db.SaveChangesAsync(ct);
@@ -102,6 +103,7 @@ public class HomeworksController(
         hw.Targets = targets;
         if (subtasksChanged)
             ReplaceSubtasks(hw, request.Subtasks);
+        ApplyMaxScore(hw, request.MaxScore);
 
         if (hw.IsPublished)
         {
@@ -194,6 +196,14 @@ public class HomeworksController(
         hw.Deadline = r.Deadline.ToUniversalTime();
     }
 
+    /// <summary>Максимальный балл задаётся вручную, только пока у подзадач нет баллов; появились баллы — максимум пересчитывается по ним.</summary>
+    private static void ApplyMaxScore(Homework hw, decimal? maxScore)
+    {
+        if (maxScore is <= 0 or > 1000)
+            throw ApiException.BadRequest("Максимальный балл — больше 0 и не больше 1000");
+        hw.MaxScore = hw.Subtasks.Any(s => s.MaxScore is not null) ? null : maxScore;
+    }
+
     private static List<SubtaskDto> ValidSubtasks(SubtaskDto[] subtasks)
     {
         var result = subtasks.Select(s => s with { Title = s.Title.Trim() }).ToList();
@@ -270,5 +280,5 @@ public class HomeworksController(
         h.Subtasks.OrderBy(s => s.Order).Select(s => new SubtaskDto(s.Id, s.Title, s.MaxScore)).ToArray(),
         h.Courses.OrderBy(Notifier.CourseName).Select(c => new CourseRef(c.Id, Notifier.CourseName(c))).ToArray(),
         h.Targets.Select(t => new HomeworkTargetDto(t.Kind, t.RefId)).ToArray(),
-        counts.Recipients, counts.Submitted, counts.Reviewed, subtasksLocked, h.Courses.All(c => c.IsArchived));
+        counts.Recipients, counts.Submitted, counts.Reviewed, subtasksLocked, h.Courses.All(c => c.IsArchived), h.EffectiveMaxScore);
 }

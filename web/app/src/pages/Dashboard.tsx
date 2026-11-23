@@ -19,7 +19,7 @@ function badge(title: string) {
   return word === word.toUpperCase() ? word.slice(0, 3) : word[0].toUpperCase();
 }
 
-const maxPoints = (h: HomeworkDto) => h.subtasks.reduce((s, t) => s + (t.maxScore ?? 0), 0);
+const maxPoints = (h: HomeworkDto) => h.maxScore ?? 0;
 
 interface Row { course: SubjectCourse; hw: HomeworkDto }
 

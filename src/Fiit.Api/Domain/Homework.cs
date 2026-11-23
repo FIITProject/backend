@@ -21,8 +21,13 @@ public class Homework
     public List<Course> Courses { get; set; } = [];
     public List<Subtask> Subtasks { get; set; } = [];
     public List<HomeworkTarget> Targets { get; set; } = [];
+    /// <summary>Максимальный балл, заданный вручную, — только пока у подзадач нет баллов.</summary>
+    public decimal? MaxScore { get; set; }
 
     public bool IsPublished => PublishedAt is not null;
+
+    /// <summary>Максимальный балл: сумма баллов подзадач, если они есть, иначе заданный вручную (или не указан).</summary>
+    public decimal? EffectiveMaxScore => Subtasks.Any(s => s.MaxScore is not null) ? Subtasks.Sum(s => s.MaxScore ?? 0) : MaxScore;
 }
 
 /// <summary>Сужение адресатов внутри курсов ДЗ. Нет правил — ДЗ выдано всем студентам курсов. Видимость считается динамически.</summary>

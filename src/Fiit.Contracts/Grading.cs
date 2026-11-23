@@ -39,7 +39,8 @@ public record ReviewContextDto(
     string StudentName,
     string CourseName,
     bool IsReadOnly,
-    SubmissionDto[] Submissions);
+    SubmissionDto[] Submissions,
+    decimal? MaxScore = null);
 
 public record SubmissionDto(
     int Id,

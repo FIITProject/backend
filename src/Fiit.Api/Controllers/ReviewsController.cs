@@ -34,7 +34,8 @@ public class ReviewsController(AppDbContext db, Access access, IFileStorage stor
             student.Id, student.FullName, Notifier.CourseName(course), course.IsArchived,
             submissions.Select(s => new SubmissionDto(s.Id, s.Version, s.SubmittedAt, Grading.IsLate(s.SubmittedAt, hw.Deadline),
                 Grading.IsLate(s.SubmittedAt, hw.Deadline) ? s.SubmittedAt - hw.Deadline : null,
-                s.FileName, s.FileSize, s.Version == latestVersion, s.Review is null ? null : ToDto(s.Review, hw))).ToArray());
+                s.FileName, s.FileSize, s.Version == latestVersion, s.Review is null ? null : ToDto(s.Review, hw))).ToArray(),
+            hw.EffectiveMaxScore);
     }
 
     /// <summary>П-9.12: оригинальный PDF студента.</summary>

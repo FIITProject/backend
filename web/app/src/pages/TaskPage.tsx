@@ -11,7 +11,7 @@ import { IconCheck } from '../ui/icons';
 import { IconPen } from '../ui/icons';
 import { PageStyle } from '../ui/PageStyle';
 import { Alert, Async, Empty, Loading, useAction, useConfirm, useLoad, useToast } from '../ui/ui';
-import { codePrefixes, FilterMenu, maxPoints, parseTitle, passes, pointsText, tagClass, type FilterOption } from './tasks/taskCommon';
+import { codePrefixes, FilterMenu, parseTitle, passes, pointsText, tagClass, type FilterOption } from './tasks/taskCommon';
 
 // Фильтр «Статус» дизайна: три группы статусов ячейки сводной.
 type StatusGroup = 'none' | 'review' | 'done';
@@ -81,7 +81,7 @@ function Task({ hw, prefixes, reload }: { hw: HomeworkDto; prefixes: string[]; r
   const { confirm, dialog } = useConfirm();
   const toast = useToast();
   const t = parseTitle(hw.title);
-  const points = maxPoints(hw.subtasks);
+  const points = hw.maxScore;
 
   useCrumbs([
     course.isArchived ? { label: 'Архив', to: '/archive' } : { label: 'Курсы', to: '/courses' },

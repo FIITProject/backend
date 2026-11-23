@@ -205,8 +205,8 @@ function Workspace({ ctx, keepVersion, nav, onReload }: {
   const filled = parsed.filter(p => typeof p.value === 'number');
   const sum = filled.length ? Math.round(filled.reduce((a, p) => a + (p.value as number), 0) * 100) / 100 : null;
   const total = override ?? sum;
-  const maxTotal = subtasks.length && subtasks.every(st => st.maxScore !== null)
-    ? subtasks.reduce((a, st) => a + st.maxScore!, 0) : null;
+  // Максимум — с сервера: сумма баллов подзадач или макс. балл задания, заданный вручную
+  const maxTotal = ctx.maxScore;
 
   // ── Сохранение черновика (П-9.6): через секунду после последней правки, по одному запросу за раз ──
   const state = useRef({ sub, scores, override, comment, readOnly, invalid: invalid.size > 0, parsed });

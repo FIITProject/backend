@@ -41,11 +41,15 @@ export interface SubtaskDto { id: number | null; title: string; maxScore: number
 export interface HomeworkEditRequest {
   subjectId: number; semester: SemesterDto; title: string; link: string; deadline: string;
   subtasks: SubtaskDto[]; courseIds: number[]; targets: HomeworkTargetDto[]; notifyStudents: boolean;
+  /** Макс. балл без подзадач; при подзадачах с баллами — их сумма (сервер пересчитывает сам). */
+  maxScore: number | null;
 }
 export interface HomeworkDto {
   id: number; subjectId: number; subjectName: string; semester: SemesterDto; title: string; link: string; deadline: string;
   isPublished: boolean; publishedAt: string | null; authorName: string; subtasks: SubtaskDto[]; courses: CourseRef[];
   targets: HomeworkTargetDto[]; recipientsCount: number; submittedCount: number; reviewedCount: number; subtasksLocked: boolean; isReadOnly: boolean;
+  /** Максимальный балл: сумма баллов подзадач или заданный вручную. */
+  maxScore: number | null;
 }
 export interface RecipientsPreviewResponse { count: number }
 export interface PublishResponse { notified: number }
@@ -65,6 +69,7 @@ export interface GradebookCell {
 export interface ReviewContextDto {
   homeworkId: number; homeworkTitle: string; homeworkLink: string; deadline: string; subtasks: SubtaskDto[];
   studentId: number; studentName: string; courseName: string; isReadOnly: boolean; submissions: SubmissionDto[];
+  maxScore: number | null;
 }
 export interface SubmissionDto {
   id: number; version: number; submittedAt: string; isLate: boolean; lateBy: string | null; fileName: string; fileSize: number;
