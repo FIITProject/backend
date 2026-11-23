@@ -1,0 +1,8 @@
+@import url("theme.css");
+@import url("utilities.css");
+
+@layer base {
+  a[class] { text-decoration: none; }
+  [hidden] { display: none !important; }
+  a[href], button, [role="button"] { cursor: pointer; }
+}

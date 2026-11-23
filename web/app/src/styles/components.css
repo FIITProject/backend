@@ -1,0 +1,19 @@
+@layer components {
+  .profile-chip .avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 13px;
+  }
+
+  .sidebar__user {
+    margin-top: auto;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 6px 0;
+    border-top: 1px solid var(--night-line);
+    color: var(--on-brand);
+  }
+}

@@ -1,0 +1,18 @@
+@layer pages {
+  .hero {
+    background: linear-gradient(135deg, var(--c-6e6a84) 0%, var(--c-8a87a3) 55%, var(--c-a7a3bb) 100%);
+  }
+
+  .hero.hero--blue {
+    background: linear-gradient(135deg, var(--c-5f7088) 0%, var(--c-7b8ca2) 55%, var(--c-9ba8ba) 100%);
+  }
+
+  .hero::after {
+    opacity: .22;
+  }
+
+  .pill {
+    background: var(--c-ffffff2e);
+    border-color: var(--c-ffffff47);
+  }
+}

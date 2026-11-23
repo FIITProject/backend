@@ -113,14 +113,25 @@ services:
       Api__BotKey: ${BOT_KEY:-dev-bot-key}
       RabbitMq__Uri: amqp://fiit:fiit@rabbitmq:5672/
 
+  # Сайт преподавателя (React)
   web:
+    build:
+      context: .
+      dockerfile: web/app/Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+  # Временный тестовый сайт на Blazor — нужен ради эмулятора бота, пока React-версия его не умеет
+  web-blazor:
     build:
       context: .
       dockerfile: web/Dockerfile
     depends_on:
       - api
     ports:
-      - "8080:80"
+      - "8081:80"
 
 volumes:
   db-data:
