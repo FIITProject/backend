@@ -25,8 +25,9 @@ public record GradebookRow(
     GradebookCell[] Cells,
     decimal? Average);
 
-/// <summary>Score — оценка из отправленной студенту проверки последней версии; ReviewedBy — кто её отправил.</summary>
-public record GradebookCell(int HomeworkId, CellStatus Status, decimal? Score, bool IsLate, int Versions, int? LatestSubmissionId, string? ReviewedBy = null);
+/// <summary>Score — оценка из отправленной студенту проверки последней версии; ReviewedBy — кто её отправил; SubmittedAt — когда сдана последняя версия.</summary>
+public record GradebookCell(int HomeworkId, CellStatus Status, decimal? Score, bool IsLate, int Versions, int? LatestSubmissionId, string? ReviewedBy = null,
+    DateTimeOffset? SubmittedAt = null);
 
 public record ReviewContextDto(
     int HomeworkId,

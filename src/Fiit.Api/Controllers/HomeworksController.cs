@@ -125,9 +125,9 @@ public class HomeworksController(
         return await Get(id, ct);
     }
 
-    /// <summary>П-7.4: публикация — уведомления адресатам; адресаты фиксируются (П-7.5).</summary>
+    /// <summary>П-7.4: публикация — уведомления адресатам (notify=false — без рассылки, ДЗ просто появится в боте); адресаты фиксируются (П-7.5).</summary>
     [HttpPost("{id:int}/publish")]
-    public async Task<PublishResponse> Publish(int id, CancellationToken ct)
+    public async Task<PublishResponse> Publish(int id, CancellationToken ct, bool notify = true)
     {
         var hw = await access.HomeworkAsync(id, ct);
         if (hw.IsPublished)
@@ -141,9 +141,9 @@ public class HomeworksController(
             throw ApiException.BadRequest("У ДЗ нет ни одного адресата");
 
         hw.PublishedAt = time.GetUtcNow();
-        NotifyNew(hw, recipients);
+        NotifyNew(hw, recipients, notify);
         await db.SaveChangesAsync(ct);
-        return new PublishResponse(recipients.Count);
+        return new PublishResponse(notify ? recipients.Count : 0);
     }
 
     /// <summary>П-7.3, П-7.7: черновик удаляется всегда, опубликованное — только если по нему нет сдач.</summary>
@@ -169,13 +169,15 @@ public class HomeworksController(
         return new RecipientsPreviewResponse(facts.Values.Count(f => Recipients.Matches(ids, targets, f)));
     }
 
-    private void NotifyNew(Homework hw, IEnumerable<int> studentIds)
+    /// <summary>Фиксирует адресатов; send=false — без сообщения в бот (адресат всё равно учтён, повторно «Новое ДЗ» ему не придёт).</summary>
+    private void NotifyNew(Homework hw, IEnumerable<int> studentIds, bool send = true)
     {
         var now = time.GetUtcNow();
         foreach (var s in studentIds)
         {
             db.HomeworkRecipients.Add(new HomeworkRecipient { HomeworkId = hw.Id, StudentId = s, NotifiedAt = now });
-            notifier.HomeworkPublished(s, hw);
+            if (send)
+                notifier.HomeworkPublished(s, hw);
         }
     }
 
