@@ -13,9 +13,12 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<AppDbContext>(o => o
+builder.Services.AddSingleton<LiveEvents>();
+builder.Services.AddSingleton<LiveEventsInterceptor>();
+builder.Services.AddDbContext<AppDbContext>((sp, o) => o
     .UseNpgsql(builder.Configuration.GetConnectionString("Db"))
-    .UseSnakeCaseNamingConvention());
+    .UseSnakeCaseNamingConvention()
+    .AddInterceptors(sp.GetRequiredService<LiveEventsInterceptor>()));
 
 var jwt = builder.Configuration.GetRequiredSection(JwtOptions.Section).Get<JwtOptions>()!;
 builder.Services.AddOptions<JwtOptions>().BindConfiguration(JwtOptions.Section)

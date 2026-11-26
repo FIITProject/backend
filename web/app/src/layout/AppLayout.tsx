@@ -5,6 +5,7 @@ import { api } from '../api/api';
 import { loadOverview, subjectCoursePath } from '../lib/courses';
 import { getNotifyPrefs, onNotifyPrefsChange } from '../lib/notifyPrefs';
 import { initials } from '../lib/format';
+import { subscribeLive } from '../lib/liveEvents';
 import { IconArchive, IconBell, IconCollapse, IconCourses, IconCrumbSep, IconOverview } from '../ui/icons';
 
 // ── Навигационная цепочка: страница сообщает её через useCrumbs ──────
@@ -41,12 +42,33 @@ export function AppLayout() {
   const [tick, setTick] = useState(0);
   useEffect(() => onNotifyPrefsChange(() => setPrefs(getNotifyPrefs())), []);
 
+  // Колокольчик в реальном времени: API присылает событие, когда появилась заявка, сдача или изменилась проверка.
+  // Пачку событий (одобрили десять заявок) сводим в одно перечитывание. Просрочки зависят от времени, а не от
+  // событий, поэтому раз в минуту видимая вкладка перечитывает счётчики сама; вернулись на вкладку — тоже.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const refresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => setTick(t => t + 1), 300);
+    };
+    const unsubscribe = subscribeLive(refresh);
+    const onVisible = () => document.visibilityState === 'visible' && refresh();
+    document.addEventListener('visibilitychange', onVisible);
+    const minutely = setInterval(() => document.visibilityState === 'visible' && refresh(), 60_000);
+    return () => {
+      unsubscribe();
+      clearTimeout(timer);
+      clearInterval(minutely);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+
   useEffect(() => {
     document.documentElement.classList.toggle('menu-collapsed', collapsed);
     try { localStorage.setItem(MENU_KEY, collapsed ? 'collapsed' : 'expanded'); } catch { /* без сохранения */ }
   }, [collapsed]);
 
-  // Счётчики пересчитываются при переходах и по запросу страниц
+  // Счётчики пересчитываются при переходах, по запросу страниц и по живым событиям
   useEffect(() => {
     let alive = true;
     loadOverview().then(async o => {
