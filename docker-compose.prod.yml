@@ -1,0 +1,126 @@
+# Прод: деплоится Dokploy из main (docs/deploy.md). Секреты — в переменных окружения Dokploy (.env рядом при ручном запуске).
+# Отличия от docker-compose.yml: нет паролей по умолчанию, наружу смотрит только сайт, бот запускается всегда,
+# нет Blazor-сайта, все сервисы перезапускаются сами.
+# Ручной запуск: docker compose -f docker-compose.prod.yml up -d --build
+# Первый преподаватель: docker compose -f docker-compose.prod.yml run --rm migrate add-teacher <логин> <пароль> <Фамилия> <Имя> [Отчество]
+x-db: &db-conn Host=db;Database=fiit;Username=fiit;Password=${DB_PASSWORD:?DB_PASSWORD}
+x-rabbit: &rabbit-uri amqp://fiit:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD}@rabbitmq:5672/
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fiit
+      POSTGRES_USER: fiit
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fiit -d fiit"]
+      interval: 2s
+      retries: 30
+
+  s3:
+    image: rustfs/rustfs:1.0.3
+    command: ["/data"]
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: fiit
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:?S3_SECRET_KEY}
+    volumes:
+      - s3-data:/data
+
+  rabbitmq:
+    image: rabbitmq:4.1-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: fiit
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      retries: 30
+
+  # Шаг деплоя: миграции тем же образом, что api. Api стартует только после успеха
+  migrate:
+    build: .
+    image: fiit-api:latest
+    init: true
+    command: ["migrate"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Db: *db-conn
+      Jwt__Key: ${JWT_KEY:?JWT_KEY}
+
+  api:
+    build: .
+    image: fiit-api:latest
+    init: true
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      s3:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Db: *db-conn
+      Jwt__Key: ${JWT_KEY:?JWT_KEY}
+      Bot__Key: ${BOT_KEY:?BOT_KEY}
+      Bot__Username: ${BOT_USERNAME:?BOT_USERNAME}
+      Storage__ServiceUrl: http://s3:9000
+      Storage__AccessKey: fiit
+      Storage__SecretKey: ${S3_SECRET_KEY:?S3_SECRET_KEY}
+      Storage__Bucket: fiit-homeworks
+      Storage__CreateBucket: "true"
+      RabbitMq__Uri: *rabbit-uri
+      ClamAv__Enabled: "true"
+      ClamAv__Host: clamav
+
+  clamav:
+    image: clamav/clamav-debian:1.4
+    restart: unless-stopped
+    volumes:
+      - clamav-data:/var/lib/clamav
+
+  bot:
+    build:
+      context: .
+      dockerfile: src/Fiit.Bot/Dockerfile
+    init: true
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      Telegram__Token: ${TELEGRAM_TOKEN:?TELEGRAM_TOKEN}
+      Telegram__Proxy: ${TELEGRAM_PROXY:-}
+      Api__BaseUrl: http://api:8080/
+      Api__BotKey: ${BOT_KEY:?BOT_KEY}
+      RabbitMq__Uri: *rabbit-uri
+
+  # Сайт преподавателя. Порт на хосте — WEB_PORT (по умолчанию 8080); домен и HTTPS — через Traefik Dokploy
+  web:
+    build:
+      context: .
+      dockerfile: web/app/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  db-data:
+  s3-data:
+  clamav-data:
+  rabbitmq-data:

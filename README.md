@@ -36,6 +36,8 @@ TELEGRAM_TOKEN=123:abc BOT_USERNAME=имя_бота docker compose --profile bot
 
 Если Telegram недоступен напрямую, добавьте в `.env` прокси: `TELEGRAM_PROXY=socks5://логин:пароль@host:port` (или `http://...`). Через неё идут только запросы к Telegram.
 
+Прод — Dokploy на ВМ Yandex Cloud, автодеплой из `main`: [docs/deploy.md](docs/deploy.md).
+
 Сценарий для проверки:
 1. «Курсы» → создать курс (например, «Тервер», группа `ФИИТ-301-1`).
 2. «Приглашения» → создать ссылку, скопировать код.
