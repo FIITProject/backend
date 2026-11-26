@@ -1,6 +1,6 @@
 # ФИИТ · сдача и проверка ДЗ
 
-Сервис сдачи и проверки домашних заданий: сайт преподавателя + Telegram-бот для студентов. ТЗ — [docs/tz.md](docs/tz.md), архитектура и API — [docs/architecture.md](docs/architecture.md).
+Сервис сдачи и проверки домашних заданий: сайт преподавателя + Telegram-бот для студентов. Обзор проекта — [OVERVIEW.md](OVERVIEW.md), ТЗ — [docs/tz.md](docs/tz.md), решения и API — [docs/architecture.md](docs/architecture.md).
 
 | Путь | Что |
 |---|---|
