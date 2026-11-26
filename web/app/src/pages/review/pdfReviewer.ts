@@ -115,6 +115,7 @@ export class PdfReviewer {
       }
     });
     this.resizeObserver.observe(this.container);
+    this.watchPixelRatio();
     this.render();
     this.history();
     return pdf.numPages;
@@ -134,8 +135,10 @@ export class PdfReviewer {
 
   zoom(factor: number) {
     if (!this.pages.length) return;
+    // Текущий масштаб берём до выхода из режима «по ширине», иначе currentScale() вернёт старый this.scale
+    const current = this.currentScale();
     this.fit = false;
-    this.scale = Math.min(4, Math.max(0.3, this.currentScale() * factor));
+    this.scale = Math.min(4, Math.max(0.3, current * factor));
     this.render();
   }
 
@@ -172,6 +175,7 @@ export class PdfReviewer {
   destroy() {
     this.destroyed = true;
     this.resizeObserver?.disconnect();
+    this.unwatchPixelRatio?.();
     for (const p of this.pages) p.renderTask?.cancel();
     void this.loadingTask?.destroy();
     this.loadingTask = null;
@@ -180,6 +184,26 @@ export class PdfReviewer {
   }
 
   // ── внутреннее ──────────────────────────────────────────────────────
+
+  private unwatchPixelRatio: (() => void) | null = null;
+
+  /**
+   * Зум браузера (⌘+/⌘−) и перенос окна на другой монитор меняют devicePixelRatio: холсты созданы под старый,
+   * поэтому перерисовываем всё — иначе PDF мылится. Пометки от этого не съезжают (drawOverlay считает от размера холста).
+   */
+  private watchPixelRatio() {
+    const watch = () => {
+      const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      const onChange = () => {
+        if (this.destroyed) return;
+        this.render();
+        watch();
+      };
+      mq.addEventListener('change', onChange, { once: true });
+      this.unwatchPixelRatio = () => mq.removeEventListener('change', onChange);
+    };
+    watch();
+  }
 
   private updateCursor() {
     this.container.dataset.tool = this.readOnly ? 'none' : this.opts.tool;
@@ -222,10 +246,11 @@ export class PdfReviewer {
   private drawOverlay(p: Page) {
     const ctx = p.overlay.getContext('2d');
     if (!ctx) return;
-    const dpr = window.devicePixelRatio || 1;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, p.overlay.width, p.overlay.height);
-    ctx.setTransform(dpr * this.scaleUsed, 0, 0, dpr * this.scaleUsed, 0, 0);
+    // Пункт PDF → пиксель холста по фактическому размеру холста, а не по текущему devicePixelRatio:
+    // после зума браузера он другой, чем при создании холста, и все пометки растягивались
+    ctx.setTransform(p.overlay.width / p.base.width, 0, 0, p.overlay.height / p.base.height, 0, 0);
     for (const a of this.annotations) {
       if (a.page !== p.index) continue;
       ctx.globalAlpha = a.opacity || 1;
