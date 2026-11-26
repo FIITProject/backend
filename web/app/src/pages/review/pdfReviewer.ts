@@ -259,8 +259,13 @@ export class PdfReviewer {
   }
 
   private toPdf(p: Page, e: PointerEvent) {
+    // Доля от размера страницы на экране, а не деление на scaleUsed: страница проверки ещё масштабируется под окно
+    // CSS-свойством zoom (fit-viewport), и clientX/getBoundingClientRect приходят с его учётом — пометка съезжала
     const r = p.overlay.getBoundingClientRect();
-    return { x: round((e.clientX - r.left) / this.scaleUsed), y: round((e.clientY - r.top) / this.scaleUsed) };
+    return {
+      x: round(((e.clientX - r.left) / r.width) * p.base.width),
+      y: round(((e.clientY - r.top) / r.height) * p.base.height),
+    };
   }
 
   private attach(p: Page) {
