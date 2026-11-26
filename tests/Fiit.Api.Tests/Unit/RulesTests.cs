@@ -101,7 +101,10 @@ public class GradingTests
     }
 
     [Fact]
-    public void Average_ignores_missing_scores() => Assert.Equal(7.5m, Grading.Average([5m, null, 10m]));
+    public void Total_sums_sent_scores_ignoring_missing() => Assert.Equal(19.3m, Grading.Total([4.3m, null, 10m, 5m]));
+
+    [Fact]
+    public void Total_is_empty_without_scores() => Assert.Null(Grading.Total([null, null]));
 }
 
 public class RecipientsTests

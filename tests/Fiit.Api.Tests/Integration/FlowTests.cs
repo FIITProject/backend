@@ -114,7 +114,7 @@ public class FlowTests(ApiFactory factory)
 
         book = await teacher.Get<GradebookDto>($"/api/gradebook?subjectId={subject.Id}&semesterYear=2026&semesterTerm=Autumn");
         Assert.Equal(CellStatus.Reviewed, book.Rows.Single().Cells.Single().Status);
-        Assert.Equal(9.5m, book.Rows.Single().Average);
+        Assert.Equal(9.5m, book.Rows.Single().Total);
 
         // П-9.8: правки после отправки → «есть неотправленные правки», повторная отправка → «Проверка обновлена»
         await teacher.Put($"/api/submissions/{latest.Id}/review", new SaveReviewRequest(annotations, "Отлично", [new SubtaskScoreDto(subtaskIds[0], 5), new SubtaskScoreDto(subtaskIds[1], 5)], null)).Ok<ReviewDto>();
