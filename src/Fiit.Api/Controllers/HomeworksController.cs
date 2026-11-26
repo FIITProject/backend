@@ -58,6 +58,7 @@ public class HomeworksController(
         };
         ApplyFields(hw, request);
         hw.Subtasks = ValidSubtasks(request.Subtasks).Select((s, i) => new Subtask { Title = s.Title, MaxScore = s.MaxScore, Order = i }).ToList();
+        ApplyMaxScore(hw, request.MaxScore);
         hw.Targets = await ValidTargetsAsync(request.Targets, courses, null, ct);
         db.Homeworks.Add(hw);
         await db.SaveChangesAsync(ct);
@@ -102,6 +103,7 @@ public class HomeworksController(
         hw.Targets = targets;
         if (subtasksChanged)
             ReplaceSubtasks(hw, request.Subtasks);
+        ApplyMaxScore(hw, request.MaxScore);
 
         if (hw.IsPublished)
         {
@@ -125,9 +127,9 @@ public class HomeworksController(
         return await Get(id, ct);
     }
 
-    /// <summary>П-7.4: публикация — уведомления адресатам; адресаты фиксируются (П-7.5).</summary>
+    /// <summary>П-7.4: публикация — уведомления адресатам (notify=false — без рассылки, ДЗ просто появится в боте); адресаты фиксируются (П-7.5).</summary>
     [HttpPost("{id:int}/publish")]
-    public async Task<PublishResponse> Publish(int id, CancellationToken ct)
+    public async Task<PublishResponse> Publish(int id, CancellationToken ct, bool notify = true)
     {
         var hw = await access.HomeworkAsync(id, ct);
         if (hw.IsPublished)
@@ -141,9 +143,9 @@ public class HomeworksController(
             throw ApiException.BadRequest("У ДЗ нет ни одного адресата");
 
         hw.PublishedAt = time.GetUtcNow();
-        NotifyNew(hw, recipients);
+        NotifyNew(hw, recipients, notify);
         await db.SaveChangesAsync(ct);
-        return new PublishResponse(recipients.Count);
+        return new PublishResponse(notify ? recipients.Count : 0);
     }
 
     /// <summary>П-7.3, П-7.7: черновик удаляется всегда, опубликованное — только если по нему нет сдач.</summary>
@@ -169,13 +171,15 @@ public class HomeworksController(
         return new RecipientsPreviewResponse(facts.Values.Count(f => Recipients.Matches(ids, targets, f)));
     }
 
-    private void NotifyNew(Homework hw, IEnumerable<int> studentIds)
+    /// <summary>Фиксирует адресатов; send=false — без сообщения в бот (адресат всё равно учтён, повторно «Новое ДЗ» ему не придёт).</summary>
+    private void NotifyNew(Homework hw, IEnumerable<int> studentIds, bool send = true)
     {
         var now = time.GetUtcNow();
         foreach (var s in studentIds)
         {
             db.HomeworkRecipients.Add(new HomeworkRecipient { HomeworkId = hw.Id, StudentId = s, NotifiedAt = now });
-            notifier.HomeworkPublished(s, hw);
+            if (send)
+                notifier.HomeworkPublished(s, hw);
         }
     }
 
@@ -190,6 +194,14 @@ public class HomeworksController(
         hw.Title = title;
         hw.Link = link;
         hw.Deadline = r.Deadline.ToUniversalTime();
+    }
+
+    /// <summary>Максимальный балл задаётся вручную, только пока у подзадач нет баллов; появились баллы — максимум пересчитывается по ним.</summary>
+    private static void ApplyMaxScore(Homework hw, decimal? maxScore)
+    {
+        if (maxScore is <= 0 or > 1000)
+            throw ApiException.BadRequest("Максимальный балл — больше 0 и не больше 1000");
+        hw.MaxScore = hw.Subtasks.Any(s => s.MaxScore is not null) ? null : maxScore;
     }
 
     private static List<SubtaskDto> ValidSubtasks(SubtaskDto[] subtasks)
@@ -268,5 +280,5 @@ public class HomeworksController(
         h.Subtasks.OrderBy(s => s.Order).Select(s => new SubtaskDto(s.Id, s.Title, s.MaxScore)).ToArray(),
         h.Courses.OrderBy(Notifier.CourseName).Select(c => new CourseRef(c.Id, Notifier.CourseName(c))).ToArray(),
         h.Targets.Select(t => new HomeworkTargetDto(t.Kind, t.RefId)).ToArray(),
-        counts.Recipients, counts.Submitted, counts.Reviewed, subtasksLocked, h.Courses.All(c => c.IsArchived));
+        counts.Recipients, counts.Submitted, counts.Reviewed, subtasksLocked, h.Courses.All(c => c.IsArchived), h.EffectiveMaxScore);
 }

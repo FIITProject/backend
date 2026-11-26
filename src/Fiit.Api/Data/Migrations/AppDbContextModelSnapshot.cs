@@ -212,6 +212,10 @@ namespace Fiit.Api.Data.Migrations
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("link");
 
+                    b.Property<decimal?>("MaxScore")
+                        .HasColumnType("numeric")
+                        .HasColumnName("max_score");
+
                     b.Property<DateTimeOffset?>("PublishedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("published_at");

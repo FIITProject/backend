@@ -1,0 +1,89 @@
+@layer pages {
+  .profile-data>.row>.icon-btn {
+    flex: none;
+  }
+
+  .profile-data>.row>.text-muted {
+    flex: none;
+  }
+
+  .profile-data__label {
+    width: 100px;
+  }
+
+  .profile-data__login {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .profile-banner {
+    height: 132px;
+    flex: none;
+  }
+
+  .profile-title {
+    grid-column: 1 / -1;
+  }
+
+  .profile-side {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .profile-card {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .profile-data {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .profile-data>.row {
+    flex: 1;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+ 
+  .d-grid--x1 {
+    grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+
+  .chip--x1 {
+    border: 1.5px solid var(--c-b9a0f5);
+  }
+
+  .row--x1 {
+    border-top: 1px solid var(--border-faint);
+  }
+
+  .profile-side {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .profile-side>.card {
+    flex: 1;
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+
+  .profile-side .row--x1 {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .profile-side h2.mb-10,
+  .profile-side .mb-8 {
+    margin-bottom: 4px;
+  }
+
+  .profile-side>.card>.row {
+    flex: 1;
+  }
+}

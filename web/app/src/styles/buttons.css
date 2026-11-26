@@ -1,0 +1,144 @@
+@layer components {
+  .btn-dark {
+    background: var(--night);
+    color: var(--on-brand);
+    border: 0;
+    border-radius: 999px;
+    padding: 0 26px;
+    height: 48px;
+    font: inherit;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .icon-btn {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    display: grid;
+    place-items: center;
+    color: var(--brand-strong);
+  }
+
+  .icon-btn--edit {
+    background: var(--tint-brand);
+    border-color: var(--border-brand-soft);
+    color: var(--brand-strong);
+  }
+
+  .icon-btn--edit:hover {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: var(--on-brand);
+  }
+
+  .icon-btn--delete {
+    background: var(--c-ffe4e8);
+    border-color: var(--c-ffe4e8);
+    color: var(--c-c1272d);
+  }
+
+  .icon-btn--delete:hover {
+    background: var(--c-c1272d);
+    border-color: var(--c-c1272d);
+    color: var(--on-brand);
+  }
+
+  /* кнопки удаления, архивирования - красная заливка */
+  .btn-primary.btn-danger-soft {
+    background: var(--c-ffe4e8);
+    color: var(--c-c1272d);
+    box-shadow: none;
+  }
+
+  .btn-primary.btn-danger-soft:hover {
+    background: var(--c-c1272d);
+    color: var(--on-brand);
+  }
+
+  .chevron-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border-lilac);
+    background: var(--surface);
+    color: var(--brand-strong);
+    display: inline-grid;
+    place-items: center;
+    padding: 0;
+    cursor: pointer;
+    flex: none;
+  }
+
+  .btn-dark {
+    height: 56px;
+    padding: 0 32px;
+    font-size: 15px;
+  }
+
+  .btn-primary {
+    background: var(--gradient-brand);
+    color: var(--on-brand);
+    border: 0;
+    border-radius: 999px;
+    padding: 0 26px;
+    height: 48px;
+    font: inherit;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 10px 24px var(--brand-glow);
+  }
+
+  .btn-outline {
+    background: var(--surface);
+    color: var(--brand-strong);
+    border: 1.5px solid var(--border-brand-soft);
+    border-radius: 999px;
+    padding: 0 24px;
+    height: 48px;
+    font: inherit;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-sm {
+    background: var(--tint-brand);
+    color: var(--brand-strong);
+    border: 0;
+    border-radius: 999px;
+    height: 34px;
+    padding: 0 16px;
+    font: inherit;
+    font-weight: 800;
+  }
+
+  .btn-sm.is-outline {
+    background: var(--surface);
+    border: 1.5px solid var(--border-input);
+  }
+
+  .btn-sm:hover {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: var(--on-brand);
+  }
+
+  .chevron-btn svg {
+    transition: transform .2s;
+  }
+
+  .chevron-btn[aria-expanded="false"] svg {
+    transform: rotate(180deg);
+  }
+}

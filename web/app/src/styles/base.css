@@ -1,0 +1,51 @@
+/* Base — reset, document defaults, tiny layout helpers */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    font-family: Manrope, system-ui, sans-serif;
+    color: var(--ink);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  .text-muted {
+    color: var(--ink-muted);
+  }
+
+  a[class] {
+    text-decoration: none;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+
+  a[href],
+  button,
+  [role="button"],
+  [role="switch"],
+  [role="tab"],
+  label[for],
+  input[type="checkbox"],
+  summary {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}

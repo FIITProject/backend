@@ -1,0 +1,27 @@
+@layer base {
+
+  h1,
+  h2 {
+    font-family: Montserrat, Manrope, sans-serif;
+    letter-spacing: -.025em;
+    margin: 0;
+  }
+
+  h1 {
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+
+  h2 {
+    font-size: 18px;
+    font-weight: 800;
+  }
+
+  label {
+    font-weight: 700;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+}

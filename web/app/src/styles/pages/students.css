@@ -1,0 +1,14 @@
+@layer pages {
+  .search-field {
+    width: 380px;
+  }
+
+  .menu-collapsed .search-field {
+    width: 340px;
+  }
+
+  .th-filter {
+    display: inline-flex;
+    align-items: center;
+  }
+}

@@ -14,14 +14,16 @@ namespace Fiit.Api.Controllers;
 public class GradebookController(AppDbContext db, Access access, StudentFactsLoader factsLoader, HomeworkStats stats, TimeProvider time) : ControllerBase
 {
     [HttpGet]
-    public Task<GradebookDto> Get(int subjectId, int semesterYear, SemesterTerm semesterTerm, [FromQuery] int[]? courseIds, string? group, int? tagId, CancellationToken ct) =>
-        BuildAsync(subjectId, semesterYear, semesterTerm, courseIds, group, tagId, ct);
+    public Task<GradebookDto> Get(int subjectId, int semesterYear, SemesterTerm semesterTerm, [FromQuery] int[]? courseIds, string? group, int? tagId,
+        CancellationToken ct, int? homeworkId = null) =>
+        BuildAsync(subjectId, semesterYear, semesterTerm, courseIds, group, tagId, ct, homeworkId);
 
-    /// <summary>П-8.7: экспорт текущего вида с учётом фильтров.</summary>
+    /// <summary>П-8.7: экспорт текущего вида с учётом фильтров; homeworkId — только одно задание (выгрузка со страницы задания).</summary>
     [HttpGet("export.xlsx")]
-    public async Task<FileContentResult> Export(int subjectId, int semesterYear, SemesterTerm semesterTerm, [FromQuery] int[]? courseIds, string? group, int? tagId, CancellationToken ct)
+    public async Task<FileContentResult> Export(int subjectId, int semesterYear, SemesterTerm semesterTerm, [FromQuery] int[]? courseIds, string? group, int? tagId,
+        CancellationToken ct, int? homeworkId = null)
     {
-        var book = await BuildAsync(subjectId, semesterYear, semesterTerm, courseIds, group, tagId, ct);
+        var book = await BuildAsync(subjectId, semesterYear, semesterTerm, courseIds, group, tagId, ct, homeworkId);
         var subject = await db.Subjects.FindAsync([subjectId], ct);
 
         using var workbook = new XLWorkbook();
@@ -81,7 +83,8 @@ public class GradebookController(AppDbContext db, Access access, StudentFactsLoa
         _ => "",
     };
 
-    private async Task<GradebookDto> BuildAsync(int subjectId, int year, SemesterTerm term, int[]? courseIds, string? group, int? tagId, CancellationToken ct)
+    private async Task<GradebookDto> BuildAsync(int subjectId, int year, SemesterTerm term, int[]? courseIds, string? group, int? tagId, CancellationToken ct,
+        int? homeworkId = null)
     {
         var coursesQuery = access.MyCourses().Where(c => c.SubjectId == subjectId && c.SemesterYear == year && c.SemesterTerm == term);
         if (courseIds is { Length: > 0 })
@@ -104,6 +107,7 @@ public class GradebookController(AppDbContext db, Access access, StudentFactsLoa
 
         var homeworks = await access.MyHomeworks()
             .Where(h => h.SubjectId == subjectId && h.SemesterYear == year && h.SemesterTerm == term && h.PublishedAt != null)
+            .Where(h => homeworkId == null || h.Id == homeworkId)
             .Include(h => h.Courses).Include(h => h.Targets)
             .OrderBy(h => h.Deadline).ThenBy(h => h.Id)
             .AsSplitQuery()
@@ -126,7 +130,8 @@ public class GradebookController(AppDbContext db, Access access, StudentFactsLoa
                 var sentScore = hasSub && info.Latest.Review is { IsSent: true } r ? r.SentTotal : null;
                 var late = hasSub && Grading.IsLate(info.Latest.SubmittedAt, h.Deadline);
                 var reviewedBy = hasSub && info.Latest.Review?.SentBy is { } by ? Notifier.ShortName(by.FullName) : null;
-                return new GradebookCell(h.Id, status, sentScore, late, hasSub ? info.Versions : 0, hasSub ? info.Latest.Id : null, reviewedBy);
+                return new GradebookCell(h.Id, status, sentScore, late, hasSub ? info.Versions : 0, hasSub ? info.Latest.Id : null, reviewedBy,
+                    hasSub ? info.Latest.SubmittedAt : null);
             }).ToArray();
             var average = Grading.Average(cells.Where(c => c.Status is CellStatus.Reviewed or CellStatus.ReviewedWithUnsentChanges).Select(c => c.Score));
             var course = courseById[e.CourseId];

@@ -1,0 +1,60 @@
+@layer pages {
+  .chip--warn {
+    background: var(--tint-warn);
+    color: var(--text-warn);
+  }
+
+  .btn-sm {
+    min-width: 112px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    height: 34px;
+    padding: 0 14px 0 6px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .status-pill u {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--surface);
+    display: grid;
+    place-items: center;
+    text-decoration: none;
+  }
+
+  .status-pill.chip--warn {
+    background: var(--tint-warn-soft);
+    color: var(--text-warn-alt);
+  }
+
+  .status-pill.chip--brand {
+    background: var(--tint-brand-hover);
+    color: var(--brand-alt-strong);
+  }
+
+  .status-pill.chip--gray {
+    background: var(--tint-neutral-alt);
+    color: var(--ink-soft);
+  }
+
+  .late-mark {
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    background: var(--c-ffe9f2);
+    color: var(--c-a3195b);
+  }
+}

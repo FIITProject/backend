@@ -1,0 +1,60 @@
+/* Панель уведомлений под значком колокольчика в блоке аккаунта */
+@layer components {
+  .notifications {
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 6px;
+    right: 6px;
+    z-index: 20;
+    padding: 12px;
+    border: 1px solid var(--border-soft);
+    border-radius: 20px;
+    background: var(--surface);
+    box-shadow: 0 18px 40px var(--shadow-card-strong);
+  }
+
+  .notifications__title {
+    margin: 2px 8px 8px;
+    font-family: Manrope, system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink-subtle);
+  }
+
+  .notifications__list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .notifications__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    border-radius: 14px;
+    font-size: 13.5px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .notifications__item:hover {
+    background: var(--tint-brand-faint);
+  }
+
+  .notifications__dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    margin-top: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+}

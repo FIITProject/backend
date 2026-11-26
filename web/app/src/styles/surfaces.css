@@ -1,0 +1,81 @@
+@layer components {
+  .card {
+    background: var(--surface);
+    border-radius: 28px;
+    box-shadow: 0 12px 40px var(--shadow-card);
+    border: 1px solid var(--border-soft);
+  }
+
+  .hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
+    color: var(--on-brand);
+    background: linear-gradient(135deg, #7A68E4 0%, #9B7BE6 55%, #C58FDC 100%);
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, var(--surface) 1.3px, transparent 1.8px) 0 0/12px 12px;
+    opacity: .4;
+    -webkit-mask-image: radial-gradient(ellipse 70% 90% at 100% 100%, var(--black), transparent 65%);
+    mask-image: radial-gradient(ellipse 70% 90% at 100% 100%, var(--black), transparent 65%);
+    pointer-events: none;
+  }
+
+  .hero>* {
+    position: relative;
+    z-index: 1;
+  }
+
+  .pill {
+    display: inline-block;
+    background: var(--glass-22);
+    border: 1px solid var(--glass-35);
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--on-brand);
+  }
+
+  .hero.hero--blue {
+    background: linear-gradient(135deg, #7F9AEE 0%, #8271E8 55%, #AE86E4 100%);
+  }
+
+  .card-section {
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .panel-dark {
+    position: relative;
+    overflow: hidden;
+    background: var(--night);
+    color: var(--on-brand);
+    border-radius: 28px;
+  }
+
+  .panel-dark>* {
+    position: relative;
+    z-index: 1;
+  }
+
+  .panel-dark .dots {
+    z-index: 0;
+    height: 100%;
+    -webkit-mask-image: radial-gradient(ellipse 80% 100% at 100% 100%, var(--black), transparent 70%);
+    mask-image: radial-gradient(ellipse 80% 100% at 100% 100%, var(--black), transparent 70%);
+  }
+
+  /* Сетка карточек курсов (главная страница, архив): минимальная ширина каждой карточки составляет 480 пикселей; при свёрнутом меню карточки в ряду равномерно расширяются, и в один ряд помещается больше карточек */
+  .course-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+    gap: 24px;
+  }
+}

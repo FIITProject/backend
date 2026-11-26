@@ -58,6 +58,25 @@ public class NotificationsTests(ApiFactory factory)
     }
 
     [Fact]
+    public async Task Publish_without_notification_keeps_homework_visible()
+    {
+        var (teacher, _, _) = await factory.TeacherAsync();
+        var bot = factory.Bot();
+        var subject = await Scenario.SubjectAsync(teacher);
+        var course = await Scenario.CourseAsync(teacher, subject.Id);
+        var invite = await Scenario.InviteAsync(teacher, subject.Id, course.Id);
+        var (tgId, _) = await Scenario.ApprovedStudentAsync(teacher, bot, invite, course.Id);
+        await Scenario.DrainAsync(bot, tgId);
+
+        var hw = await teacher.Post("/api/homeworks", Scenario.Homework(subject.Id, [course.Id])).Ok<HomeworkDto>();
+        var published = await teacher.PostAsync($"/api/homeworks/{hw.Id}/publish?notify=false", null).Ok<PublishResponse>();
+
+        Assert.Equal(0, published.Notified);
+        Assert.Empty(await Scenario.DrainAsync(bot, tgId));
+        Assert.Single((await bot.Get<BotHomeworksDto>($"/api/bot/students/{tgId}/homeworks")).Active);
+    }
+
+    [Fact]
     public async Task Notification_endpoints_require_bot_key()
     {
         var anonymous = factory.CreateClient();

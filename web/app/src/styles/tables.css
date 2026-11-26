@@ -1,0 +1,29 @@
+@layer components {
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th {
+    text-align: left;
+    font-size: 12px;
+    color: var(--ink-subtle);
+    font-weight: 800;
+    padding: 14px 20px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  td {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border-faint);
+  }
+
+  table tr> :last-child {
+    white-space: nowrap;
+  }
+
+  th.is-filtered-col {
+    background: var(--tint-brand);
+  }
+}

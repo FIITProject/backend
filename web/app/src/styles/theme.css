@@ -1,0 +1,181 @@
+@layer base, components, layout, pages, utilities;
+
+:root {
+  --brand: #7C6AE6;
+  --brand-strong: #5A48C4;
+  --brand-vivid: #8573EC;
+  --brand-alt: #8271E8;
+  --brand-alt-strong: #6755CE;
+  --accent: #C58CE8;
+  --accent-orchid: #B98AE4;
+  --accent-hot: #E7A3CF;
+  --accent-alt: #D894D4;
+  --coral: #F5B0B4;
+  --peach: #F6BC9E;
+  --apricot: #F8CDB0;
+  --pink-light: #F2B6DE;
+  --lilac: #CDBBFA;
+  --blue: #86A0F2;
+  --blue-deep: #7690EA;
+  --magenta-deep: #AE6AA8;
+  --violet-tag: #7A68E4;
+  --orchid-tag: #AD7DE0;
+
+  /* Page, surfaces and dark UI */
+  --bg-page: #F6F3FC;
+  --bg-page-alt: #F7F5FD;
+  --bg-dashed: #F8F4FD;
+  --bg-sticky: #F1EDFA;
+  --surface: #FFFFFF;
+  --night: #2A2452;
+  --night-line: #3C3468;
+  --on-brand: #FFFFFF;
+  --white: #FFFFFF;
+  --black: #000000;
+
+  /* Text */
+  --ink: #25203F;
+  --ink-alt: #241A4A;
+  --ink-nav: #4A3F7A;
+  --ink-soft: #5A5380;
+  --ink-muted: #6B6590;
+  --ink-muted-alt: #6E6890;
+  --ink-icon: #8F87B8;
+  --ink-subtle: #9A91C4;
+  --ink-placeholder: #A39BC6;
+  --ink-disabled: #A9A3C8;
+  --on-night-muted: #CFC8F0;
+  --on-night-soft: #E7E1FF;
+
+  /* Borders, dividers and tints */
+  --border-soft: #ECE4FF;
+  --border-faint: #F0EAFF;
+  --border-input: #E1D8FA;
+  --border-input-focus: #DCD2FA;
+  --border-brand-soft: #D9CCFF;
+  --border-lilac: #E3D6FB;
+  --border-lilac-strong: #CDB9FF;
+  --divider: #DDD3F5;
+  --divider-dashed: #E7DCFB;
+  --tint-brand: #E9E2FB;
+  --tint-brand-faint: #EFE7FF;
+  --tint-brand-hover: #F1EAFF;
+  --tint-brand-row: #F4EEFF;
+  --tint-brand-strong: #DDD2F8;
+  --switch-off: #E3DAFA;
+  --tint-neutral: #ECE8F7;
+  --tint-neutral-alt: #F3F0FA;
+
+  /* Status colours */
+  --tint-danger-soft: #FFE3F1;
+  --text-danger: #A3125F;
+  --tint-warn: #FFE7C2;
+  --tint-warn-soft: #FFF3DC;
+  --text-warn: #7A3E00;
+  --text-warn-alt: #8A4B00;
+
+  /* Drawing colour: black pen */
+  --draw-black: #1a1625;
+
+  /* Success (soft, neutral green) */
+  --success-soft: #5f9b7a;
+  --success-bg: #e8f5ee;
+  --success-border: #bfe0cd;
+  --success-text: #2f7d55;
+
+  /* Translucent colours (shadows, glows, glass) */
+  --brand-glow: #7C6AE655;
+  --brand-ring: #7C6AE626;
+  --shadow-card: #7A66D81A;
+  --shadow-card-strong: #7A66D82B;
+  --blob-peach: #F8C9B499;
+  --blob-violet: #C4B2F677;
+  --on-night-10: #FFFFFF1A;
+  --on-night-15: #FFFFFF26;
+  --glass-22: #FFFFFF38;
+  --glass-35: #FFFFFF59;
+
+  /* One-off values used by a single component */
+  --c-00000033: #00000033;
+  --c-3dbe8b: #3DBE8B;
+  --c-6f5ddc: #6F5DDC;
+  --c-5f7088: #5F7088;
+  --c-8271e81f: #8271E81F;
+  --c-8271e826: #8271E826;
+  --c-8271e833: #8271E833;
+  --c-8271e855: #8271E855;
+  --c-6e6a84: #6E6A84;
+  --c-6e6a8455: #6E6A8455;
+  --c-7a6bb5: #7A6BB5;
+  --c-7b8ca2: #7B8CA2;
+  --c-7c6ae644: #7C6AE644;
+  --c-7c6ae666: #7C6AE666;
+  --c-7c6ae670: #7C6AE670;
+  --c-9a78e2: #9A78E2;
+  --c-8a87a3: #8A87A3;
+  --c-9ba8ba: #9BA8BA;
+  --c-a3195b: #A3195B;
+  --c-a59fc4: #A59FC4;
+  --c-a7a3bb: #A7A3BB;
+  --c-b02461: #B02461;
+  --c-b2a9d6: #B2A9D6;
+  --c-c4b2f666: #C4B2F666;
+  --c-b9a0f5: #B9A0F5;
+  --c-c1272d: #C1272D;
+  --c-c9b2ff: #C9B2FF;
+  --c-cfc8e6: #CFC8E6;
+  --c-cfe8ff: #CFE8FF;
+  --c-d9ceff: #D9CEFF;
+  --c-ddd3ff: #DDD3FF;
+  --c-c58ce866: #C58CE866;
+  --c-d894d433: #D894D433;
+  --c-e5484d: #E5484D;
+  --c-eee8fb: #EEE8FB;
+  --c-eee8ff: #EEE8FF;
+  --c-f2b8cf: #F2B8CF;
+  --c-f6f3fcb3: #F6F3FCB3;
+  --c-f59e42: #F59E42;
+  --c-f7b8c0: #F7B8C0;
+  --c-f9f6ff: #F9F6FF;
+  --c-f6bc9e33: #F6BC9E33;
+  --c-f8c9b488: #F8C9B488;
+  --c-ffd6ee: #FFD6EE;
+  --c-ffe4e8: #FFE4E8;
+  --c-ffe9f2: #FFE9F2;
+  --c-ffffff00: #FFFFFF00;
+  --c-ffffff1f: #FFFFFF1F;
+  --c-ffffff2e: #FFFFFF2E;
+  --c-ffffff47: #FFFFFF47;
+  --c-ffffff55: #FFFFFF55;
+  --c-ffffffb8: #FFFFFFB8;
+  --c-ffffffd9: #FFFFFFD9;
+  --c-ffffffe0: #FFFFFFE0;
+  --c-ffffffe6: #FFFFFFE6;
+
+  /* Overlay behind modal windows: white, not fully opaque */
+  --overlay-white: rgba(255, 255, 255, .62);
+
+  /* Composite */
+  --gradient-brand: linear-gradient(135deg, #7664E2 0%, #9F78E6 100%);
+}
+
+/* Redesign */
+:root {
+  --bg-page: #F5F2FC;
+  --aurora: radial-gradient(60% 50% at 8% 0%, #E6DCFB 0%, transparent 70%), radial-gradient(50% 45% at 100% 8%, #FBDDE6 0%, transparent 70%), radial-gradient(55% 50% at 85% 100%, #D9E6FB 0%, transparent 70%);
+  --glass: rgba(255, 255, 255, .72);
+  --glass-border: rgba(255, 255, 255, .9);
+  --shadow-soft: 0 10px 34px rgba(110, 92, 190, .12);
+  --shadow-card: #6E5CBE14;
+  --shadow-card-strong: #6E5CBE22;
+  --brand-glow: #7C6AE63D;
+  --blob-peach: #F8CDB566;
+  --blob-violet: #C4B2F655;
+
+  /* pastel card washes (course cards, dashboard tiles) */
+  --wash-lilac: linear-gradient(145deg, #E7DEFC 0%, #F3E3F6 60%, #FCE9E6 100%);
+  --wash-sky: linear-gradient(145deg, #DDE6FB 0%, #E8E0FB 60%, #F6E4F4 100%);
+  --wash-peach: linear-gradient(145deg, #FCE6DC 0%, #F6E3F2 60%, #E6E1FB 100%);
+  --wash-mint: linear-gradient(145deg, #DDF1EA 0%, #E3E8FA 100%);
+  --radius-xl: 28px;
+}

@@ -1,0 +1,109 @@
+@layer pages {
+  .skeleton {
+    background: linear-gradient(90deg, var(--c-eee8fb) 0%, var(--c-f9f6ff) 50%, var(--c-eee8fb) 100%);
+    background-size: 200% 100%;
+    animation: sh 1.6s linear infinite;
+    border-radius: 12px;
+  }
+
+  @keyframes sh {
+    to {
+      background-position: -200% 0;
+    }
+  }
+
+  .overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 92px;
+    bottom: 0;
+    display: grid;
+    place-items: center;
+    background: var(--c-f6f3fcb3);
+    backdrop-filter: blur(3px);
+    z-index: 4;
+  }
+
+  .overlay__card {
+    background: var(--surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 28px;
+    box-shadow: 0 24px 70px var(--shadow-card-strong);
+    padding: 36px 48px 32px;
+    width: min(420px, 90%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .overlay__card h2 {
+    font-size: 24px;
+  }
+
+  .spinner {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, var(--c-ffffff00), var(--brand) 70%, var(--accent));
+    -webkit-mask: radial-gradient(circle, transparent 20px, var(--black) 21px);
+    mask: radial-gradient(circle, transparent 20px, var(--black) 21px);
+    animation: rt 1s linear infinite;
+    margin-bottom: 8px;
+  }
+
+  @keyframes rt {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .progress-indeterminate {
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--border-soft);
+    overflow: hidden;
+    margin-top: 14px;
+    position: relative;
+  }
+
+  .progress-indeterminate i {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 38%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--brand), var(--accent));
+    animation: sl 1.4s ease-in-out infinite;
+  }
+
+  @keyframes sl {
+    from {
+      left: -40%;
+    }
+
+    to {
+      left: 102%;
+    }
+  }
+
+  @media (prefers-reduced-motion:reduce) {
+
+    .skeleton,
+    .spinner,
+    .progress-indeterminate i {
+      animation: none;
+    }
+
+    .progress-indeterminate i {
+      left: 31%;
+    }
+  }
+
+  .row--x1 {
+    border-top: 1px solid var(--border-faint);
+  }
+}

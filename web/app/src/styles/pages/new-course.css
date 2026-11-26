@@ -1,0 +1,217 @@
+@layer pages {
+  .course-preview {
+    width: 320px;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .course-preview__card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 150px;
+    padding: 22px 24px;
+  }
+
+  .course-preview__title {
+    font-size: 24px;
+    color: var(--on-brand);
+    margin-top: 6px;
+  }
+
+  .course-preview__meta {
+    opacity: .92;
+  }
+
+  .course-preview .is-placeholder {
+    color: inherit;
+    opacity: .6;
+    font-weight: inherit;
+  }
+
+  .group-tiles {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .group-tiles .group-chip {
+    justify-content: center;
+    width: auto;
+    min-width: 0;
+    height: 42px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 14px;
+    user-select: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .semester-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-weight: 700;
+  }
+
+  .semester-field__season {
+    width: 190px;
+    flex: none;
+    height: 50px;
+    align-items: stretch;
+  }
+
+  .semester-field__season>* {
+    display: grid;
+    place-items: center;
+    padding: 0 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .semester-year {
+    flex: none;
+  }
+
+  .semester-year__btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 130px;
+    height: 50px;
+    padding: 0 18px 0 20px;
+    border: 1.5px solid var(--border-input);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-placeholder);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .semester-year__btn.is-chosen {
+    color: var(--ink);
+  }
+
+  .semester-year__btn svg {
+    flex: none;
+    color: var(--brand-strong);
+    transition: transform .2s;
+  }
+
+  .semester-year__btn[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+  }
+
+  .semester-year__btn:hover,
+  .semester-year__btn:focus-visible,
+  .semester-year__btn[aria-expanded="true"] {
+    border-color: var(--border-brand-soft);
+    outline: 0;
+  }
+
+  .semester-year__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 100%;
+    padding: 10px;
+    border-radius: 18px;
+    box-shadow: 0 18px 44px var(--shadow-card-strong);
+  }
+
+  .semester-year__panel[hidden] {
+    display: none;
+  }
+
+  .semester-year__option {
+    padding: 9px 14px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .semester-year__option:hover {
+    background: var(--tint-brand-faint);
+  }
+
+  .semester-year__option.is-active {
+    background: var(--tint-brand);
+    color: var(--brand-strong);
+  }
+
+  .combo-field--groups .combo-field__button:hover:not(.is-filled) {
+    background: var(--surface);
+  }
+
+  aside>h2 {
+    font-family: Manrope, system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: 0;
+    color: var(--c-7a6bb5);
+  }
+
+  /* Modal shown when required fields are empty */
+  .modal__dialog--lg {
+    max-width: 620px;
+    padding: 32px 36px;
+    gap: 18px;
+  }
+
+  .modal__dialog--lg .modal__title {
+    padding-right: 52px;
+  }
+
+  .modal__text--regular {
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+
+  .modal__text--regular b {
+    font-weight: 800;
+  }
+
+  .modal__actions--split {
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+  }
+
+  .modal__actions .btn-outline,
+  .modal__actions .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .nc-wrap {
+    display: contents;
+  }
+
+  @media (min-width: 900px) {
+    .menu-collapsed .nc-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      width: calc((100vw - var(--sidebar-w)) / var(--content-zoom) - 80px);
+      max-width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  }
+}
