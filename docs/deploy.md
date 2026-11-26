@@ -36,12 +36,17 @@
    - Compose Path: `./docker-compose.prod.yml`.
 5. Environment — переменные из таблицы выше, затем Deploy.
 6. Deployments → скопировать Webhook URL. В GitHub: Settings → Webhooks → Add webhook, вставить URL, Content type `application/json`, событие Push. С этого момента пуш в `main` деплоит сам.
-7. Первый преподаватель (по SSH на сервере, в каталоге проекта Dokploy `/etc/dokploy/compose/<app>/code`):
+7. Первый преподаватель (по SSH на сервере):
    ```bash
-   sudo docker compose -p <app> -f docker-compose.prod.yml run --rm migrate add-teacher <логин> <пароль> <Фамилия> <Имя> [Отчество]
+   cd /etc/dokploy/compose/fiit-hw-oqmczw/code
+   sudo docker compose -p fiit-hw-oqmczw -f docker-compose.prod.yml --env-file .env run --rm migrate add-teacher <логин> <пароль> <Фамилия> <Имя> [Отчество]
    ```
 8. Домен: Domains → сервис `web`, порт 80, HTTPS через Let's Encrypt.
 
 ## Сервер
 
 `ssh admin1@89.169.145.56`. 2 vCPU, 4 ГБ RAM + 4 ГБ swap, 48 ГБ диск. Сборка образов .NET и сайта на нём занимает несколько минут.
+
+Сейчас развёрнуто: проект Dokploy `fiit`, compose `fiit-hw` (на сервере `fiit-hw-oqmczw`), сайт — http://89.169.145.56:8080, панель — http://89.169.145.56:3000. Вебхук автодеплоя добавлен в репозиторий.
+
+**Один токен — один бот.** Telegram отдаёт обновления только одному процессу: если с тем же токеном запущен бот локально, оба получают 409 Conflict. Для локальной разработки заведите отдельного бота у @BotFather.
