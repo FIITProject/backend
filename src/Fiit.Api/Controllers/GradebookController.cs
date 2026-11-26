@@ -38,7 +38,7 @@ public class GradebookController(AppDbContext db, Access access, StudentFactsLoa
             ws.Cell(1, col + 1).Value = "Опоздание";
             col += 2;
         }
-        ws.Cell(1, col).Value = "Среднее";
+        ws.Cell(1, col).Value = "Итог";
 
         var row = 2;
         foreach (var r in book.Rows)
@@ -58,8 +58,8 @@ public class GradebookController(AppDbContext db, Access access, StudentFactsLoa
                     ws.Cell(row, col + 1).Value = "да";
                 col += 2;
             }
-            if (r.Average is { } avg)
-                ws.Cell(row, col).Value = avg;
+            if (r.Total is { } total)
+                ws.Cell(row, col).Value = total;
             row++;
         }
         ws.Row(1).Style.Font.Bold = true;
@@ -133,10 +133,10 @@ public class GradebookController(AppDbContext db, Access access, StudentFactsLoa
                 return new GradebookCell(h.Id, status, sentScore, late, hasSub ? info.Versions : 0, hasSub ? info.Latest.Id : null, reviewedBy,
                     hasSub ? info.Latest.SubmittedAt : null);
             }).ToArray();
-            var average = Grading.Average(cells.Where(c => c.Status is CellStatus.Reviewed or CellStatus.ReviewedWithUnsentChanges).Select(c => c.Score));
+            var total = Grading.Total(cells.Where(c => c.Status is CellStatus.Reviewed or CellStatus.ReviewedWithUnsentChanges).Select(c => c.Score));
             var course = courseById[e.CourseId];
             return new GradebookRow(e.StudentId, e.Student.LastName, e.Student.FirstName, course.Subgroup.Group.Name,
-                Notifier.CourseName(course), course.Id, cells, average);
+                Notifier.CourseName(course), course.Id, cells, total);
         }).ToArray();
 
         var columns = homeworks.Select(h => new GradebookHomework(h.Id, h.Title, h.Deadline, h.Link,

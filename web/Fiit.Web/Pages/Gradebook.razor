@@ -63,7 +63,7 @@
                     {
                         <th title="Дедлайн @Fmt.Dt(h.Deadline)" @onclick="() => _card = h">@h.Title<div class="muted">до @Fmt.Dt(h.Deadline)</div></th>
                     }
-                    <th>Среднее</th>
+                    <th>Итог</th>
                 </tr>
             </thead>
             <tbody>
@@ -85,7 +85,7 @@
                                 @if (c.Versions > 1) { <span class="muted"> v@(c.Versions)</span> }
                             </td>
                         }
-                        <td><b>@Fmt.Score(r.Average)</b></td>
+                        <td><b>@Fmt.Score(r.Total)</b></td>
                     </tr>
                 }
             </tbody>

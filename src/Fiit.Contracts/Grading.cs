@@ -23,7 +23,7 @@ public record GradebookRow(
     string SubgroupName,
     int CourseId,
     GradebookCell[] Cells,
-    decimal? Average);
+    decimal? Total);
 
 /// <summary>Score — оценка из отправленной студенту проверки последней версии; ReviewedBy — кто её отправил; SubmittedAt — когда сдана последняя версия.</summary>
 public record GradebookCell(int HomeworkId, CellStatus Status, decimal? Score, bool IsLate, int Versions, int? LatestSubmissionId, string? ReviewedBy = null,

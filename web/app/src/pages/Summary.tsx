@@ -98,7 +98,7 @@ export default function Summary() {
                         <Link className="hw-head" title={homeworkHint(h)} to={`${path}/tasks/${h.id}`}>{h.title}</Link>
                       </th>
                     ))}
-                    <th className="col-total" title="Средняя оценка по отправленным проверкам">Итог</th>
+                    <th className="col-total" title="Сумма баллов по отправленным проверкам">Итог</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -122,7 +122,7 @@ export default function Summary() {
                           </td>
                         );
                       })}
-                      <td className="col-total">{r.average === null ? '—' : score(r.average)}</td>
+                      <td className="col-total">{r.total === null ? '—' : score(r.total)}</td>
                     </tr>
                   ))}
                 </tbody>

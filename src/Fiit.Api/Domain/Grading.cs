@@ -35,10 +35,13 @@ public static class Grading
         _ => BotHomeworkStatus.NotSubmitted,
     };
 
-    /// <summary>Итоговый столбец (П-8.3): среднее по ДЗ с отправленной проверкой, у которой есть оценка.</summary>
-    public static decimal? Average(IEnumerable<decimal?> sentScores)
+    /// <summary>
+    /// Итоговый столбец (П-8.3): сумма баллов по ДЗ с отправленной проверкой, у которой есть оценка.
+    /// Нет ни одной такой проверки — null («—»), а не 0: ещё нечего суммировать.
+    /// </summary>
+    public static decimal? Total(IEnumerable<decimal?> sentScores)
     {
         var scores = sentScores.OfType<decimal>().ToList();
-        return scores.Count == 0 ? null : Math.Round(scores.Average(), 2);
+        return scores.Count == 0 ? null : scores.Sum();
     }
 }

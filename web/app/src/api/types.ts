@@ -60,7 +60,7 @@ export interface GradebookDto { homeworks: GradebookHomework[]; rows: GradebookR
 export interface GradebookHomework { id: number; title: string; deadline: string; link: string; assignedCount: number; submittedCount: number; reviewedCount: number }
 export interface GradebookRow {
   studentId: number; lastName: string; firstName: string; groupName: string; subgroupName: string; courseId: number;
-  cells: GradebookCell[]; average: number | null;
+  cells: GradebookCell[]; total: number | null;
 }
 export interface GradebookCell {
   homeworkId: number; status: CellStatus; score: number | null; isLate: boolean; versions: number; latestSubmissionId: number | null; reviewedBy: string | null;
