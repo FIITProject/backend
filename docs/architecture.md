@@ -207,7 +207,7 @@
 ## Хостинг и деплой
 Прод — Yandex Cloud: одна VM с docker compose (migrate → api, web/nginx с HTTPS, бот, RabbitMQ, ClamAV) + Managed PostgreSQL + Object Storage. Порядок деплоя: собрать образы → `migrate` → api и web → бот. Из РФ Telegram API может быть недоступен — боту понадобится прокси или сервер, откуда Telegram открывается.
 
-Локально `docker compose up -d --build` поднимает Postgres, RustFS (S3-совместимое хранилище), RabbitMQ, ClamAV, migrate, api, web (8080) и web-blazor с эмулятором бота (8081); Telegram-бот — с профилем `bot` и токеном в `.env` (`TELEGRAM_TOKEN`, `BOT_USERNAME`). Подробно — в README.
+Локально `docker compose up -d --build` поднимает Postgres, RustFS (S3-совместимое хранилище), RabbitMQ, ClamAV, migrate, api, web (8080) и web-blazor с эмулятором бота (8081); Telegram-бот — с профилем `bot` и токеном в `.env` (`TELEGRAM_TOKEN`, `BOT_USERNAME`, при необходимости `TELEGRAM_PROXY` — SOCKS5/HTTP-прокси до Telegram). Подробно — в README.
 
 ## Тесты
 - `tests/Fiit.Api.Tests` — правила домена и проверки PDF (юнит), сценарии ТЗ через HTTP на настоящих Postgres, S3 и RabbitMQ (Testcontainers).

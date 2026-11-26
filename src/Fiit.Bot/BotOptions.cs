@@ -9,6 +9,12 @@ public class TelegramOptions
 
     /// <summary>Не больше стольких сообщений в секунду на всех (лимит Telegram — около 30).</summary>
     public int MessagesPerSecond { get; init; } = 25;
+
+    /// <summary>
+    /// Прокси до api.telegram.org, если Telegram недоступен напрямую: <c>socks5://user:pass@host:port</c> или <c>http://user:pass@host:port</c>.
+    /// Пусто — напрямую. Через прокси идут только запросы к Telegram, к API и RabbitMQ — напрямую.
+    /// </summary>
+    public string? Proxy { get; init; }
 }
 
 public class ApiOptions
