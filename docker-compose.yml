@@ -109,6 +109,7 @@ services:
     restart: on-failure
     environment:
       Telegram__Token: ${TELEGRAM_TOKEN:-}
+      Telegram__Proxy: ${TELEGRAM_PROXY:-}
       Api__BaseUrl: http://api:8080/
       Api__BotKey: ${BOT_KEY:-dev-bot-key}
       RabbitMq__Uri: amqp://fiit:fiit@rabbitmq:5672/

@@ -15,7 +15,17 @@ builder.Services.AddOptions<RabbitMqOptions>().BindConfiguration(RabbitMqOptions
     .Validate(o => o.Enabled, "RabbitMq:Uri is required").ValidateOnStart();
 
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<ITelegramBotClient>(sp => new TelegramBotClient(sp.GetRequiredService<IOptions<TelegramOptions>>().Value.Token));
+builder.Services.AddSingleton<ITelegramBotClient>(sp =>
+{
+    var o = sp.GetRequiredService<IOptions<TelegramOptions>>().Value;
+    var handler = new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(5) };
+    if (!string.IsNullOrWhiteSpace(o.Proxy))
+    {
+        handler.Proxy = TelegramProxy.Create(o.Proxy);
+        handler.UseProxy = true;
+    }
+    return new TelegramBotClient(o.Token, new HttpClient(handler));
+});
 builder.Services.AddSingleton<IBotApi>(sp =>
 {
     var o = sp.GetRequiredService<IOptions<ApiOptions>>().Value;
